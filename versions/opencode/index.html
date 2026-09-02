@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#04121d" />
+<title>아쿠아가든 2026 — 3D 아쿠아스케이프</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+  :root{
+    --glass: rgba(8, 20, 31, 0.55);
+    --stroke: rgba(255,255,255,0.14);
+    --accent:#67e8f9;
+    --txt:#eaf6ff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;overflow:hidden;background:#04121d;color:var(--txt);
+    font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;}
+  canvas{display:block;touch-action:none;}
+
+  /* 비네트 */
+  .vignette{position:fixed;inset:0;z-index:5;pointer-events:none;
+    background:radial-gradient(120% 95% at 50% 42%, transparent 52%, rgba(0,8,16,.58) 100%);}
+
+  /* ── 로딩 ── */
+  #loading{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+    background:linear-gradient(180deg,#04121d 0%,#06283a 55%,#04304a 100%);
+    transition:opacity .7s ease, visibility .7s ease;}
+  #loading[data-state="hidden"]{opacity:0;visibility:hidden;pointer-events:none;}
+  .ld-logo{font-size:34px;font-weight:800;letter-spacing:.14em;color:#eafcff;text-shadow:0 0 24px rgba(103,232,249,.45);}
+  .ld-logo span{color:#67e8f9;font-weight:300;margin-left:.35em;}
+  .ld-sub{font-size:13px;color:#8fc7dc;letter-spacing:.22em;}
+  .ld-spinner{width:38px;height:38px;border-radius:50%;border:3px solid rgba(103,232,249,.18);border-top-color:#67e8f9;
+    animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .load-status{font-size:12.5px;color:#7fb6cc;}
+  .ld-error{border-top-color:#ff6b81 !important;animation:none !important;}
+
+  /* ── 조명 패널 ── */
+  #light-panel{position:fixed;top:16px;right:16px;z-index:20;width:236px;padding:12px 16px 14px;border-radius:18px;
+    background:var(--glass);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);
+    border:1px solid var(--stroke);box-shadow:0 14px 44px rgba(0,0,0,.4);}
+  .lp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .lp-title{font-size:12px;font-weight:700;letter-spacing:.24em;color:#a8e6f5;}
+  #lp-toggle{width:24px;height:24px;border-radius:8px;border:1px solid var(--stroke);background:rgba(255,255,255,.06);
+    color:#bfe9f5;font-size:14px;line-height:1;cursor:pointer;}
+  #lp-toggle:hover{background:rgba(255,255,255,.12);}
+  #light-panel.collapsed .lp-body{display:none;}
+  .lp-row{margin-bottom:10px;}
+  .lp-row label{display:flex;justify-content:space-between;font-size:11px;color:#9fc9da;margin-bottom:5px;letter-spacing:.04em;}
+  .lp-row input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;
+    background:linear-gradient(90deg, rgba(103,232,249,.55), rgba(103,232,249,.12));outline:none;cursor:pointer;}
+  .lp-row input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+    background:#eafcff;border:2px solid #67e8f9;box-shadow:0 0 8px rgba(103,232,249,.7);cursor:pointer;}
+  .lp-row input[type="range"]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#eafcff;border:2px solid #67e8f9;cursor:pointer;}
+  .lp-presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;}
+  .lp-presets button{flex:1 1 calc(33% - 6px);padding:6px 2px;border-radius:999px;border:1px solid var(--stroke);
+    background:rgba(255,255,255,.05);color:#cfeaf4;font-size:11px;cursor:pointer;transition:all .2s;font-family:inherit;}
+  .lp-presets button:hover{background:rgba(103,232,249,.16);}
+  .lp-presets button.active{background:rgba(103,232,249,.22);border-color:#67e8f9;color:#fff;font-weight:700;
+    box-shadow:0 0 10px rgba(103,232,249,.35);}
+
+  /* ── 명언 팝업 ── */
+  #quote-popup{position:fixed;left:50%;bottom:56px;z-index:30;transform:translate(-50%,18px);
+    max-width:min(500px,88vw);padding:15px 24px 13px;border-radius:18px;text-align:center;
+    background:rgba(5,17,27,.74);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);
+    border:1px solid rgba(103,232,249,.28);box-shadow:0 18px 50px rgba(0,20,40,.5), inset 0 1px 0 rgba(255,255,255,.06);
+    opacity:0;visibility:hidden;pointer-events:none;transition:opacity .32s ease, transform .32s cubic-bezier(.2,.9,.3,1.15), visibility .32s;}
+  #quote-popup[data-state="visible"]{opacity:1;visibility:visible;transform:translate(-50%,0);}
+  .quote-icon{font-size:24px;display:block;margin-bottom:5px;}
+  .quote-text{font-size:14.5px;line-height:1.6;font-weight:600;color:#eefaff;}
+  .quote-author{display:block;margin-top:7px;font-size:12px;color:var(--accent);letter-spacing:.08em;}
+  .quote-author::before{content:"— ";opacity:.7;}
+
+  /* ── 힌트 ── */
+  #hint{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:15;white-space:nowrap;
+    font-size:12px;color:rgba(206,235,247,.78);letter-spacing:.03em;
+    background:rgba(6,20,30,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border:1px solid var(--stroke);padding:7px 16px;border-radius:999px;pointer-events:none;}
+
+  @media (max-width:560px){
+    #light-panel{top:10px;right:10px;width:184px;padding:9px 12px 11px;}
+    .lp-row label{font-size:10px;}
+    .lp-presets button{font-size:10px;padding:5px 2px;}
+    #hint{font-size:10.5px;padding:6px 12px;max-width:92vw;white-space:normal;text-align:center;}
+    #quote-popup{bottom:64px;padding:12px 16px 10px;}
+    .quote-text{font-size:13px;}
+    .ld-logo{font-size:26px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="ld-logo">AQUA<span>GARDEN</span></div>
+  <div class="ld-sub">수중 정원을 준비하고 있습니다</div>
+  <div class="ld-spinner"></div>
+  <div class="load-status">물을 채우는 중…</div>
+</div>
+
+<aside id="light-panel">
+  <div class="lp-head">
+    <span class="lp-title">조명 연출</span>
+    <button id="lp-toggle" aria-label="조명 패널 접기" aria-expanded="true">–</button>
+  </div>
+  <div class="lp-body">
+    <div class="lp-row">
+      <label for="brightness-slider">밝기</label>
+      <input id="brightness-slider" type="range" min="0" max="200" step="1" value="100" />
+    </div>
+    <div class="lp-row">
+      <label for="fog-slider">수중 안개</label>
+      <input id="fog-slider" type="range" min="10" max="55" step="1" value="28" />
+    </div>
+    <div class="lp-row">
+      <label for="angle-slider">빛 각도</label>
+      <input id="angle-slider" type="range" min="0" max="360" step="1" value="40" />
+    </div>
+    <div class="lp-presets">
+      <button data-preset="자연광" class="active">자연광</button>
+      <button data-preset="석양">석양</button>
+      <button data-preset="자외선">자외선</button>
+      <button data-preset="네온">네온</button>
+      <button data-preset="루비">루비</button>
+    </div>
+  </div>
+</aside>
+
+<div id="quote-popup" data-state="hidden" data-category="fish">
+  <span class="quote-icon">🐟</span>
+  <p class="quote-text"></p>
+  <span class="quote-author"></span>
+</div>
+
+<div id="hint">드래그로 시점을 회전하고 · 생물과 사물을 클릭하면 명언이 나타나요</div>
+<div class="vignette"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+  }
+}
+</script>
+
+<script>
+  // CDN 로딩 실패 감시 (모듈 스크립트와 별개의 클래식 스크립트)
+  (function(){
+    function showFail(msg){
+      var box=document.querySelector('#loading .load-status');
+      if(box) box.textContent=msg;
+      var sp=document.querySelector('#loading .ld-spinner');
+      if(sp) sp.classList.add('ld-error');
+    }
+    window.__AQ_SHOW_FAIL__=showFail;
+    window.addEventListener('error', function(e){
+      var src=(e && e.target && (e.target.src||e.target.href))||'';
+      if(String(src).indexOf('three')!==-1 || String(src).indexOf('jsdelivr')!==-1){
+        showFail('three.js 라이브러리를 불러오지 못했어요. 인터넷 연결을 확인한 뒤 새로고침해 주세요.');
+      }
+    }, true);
+    setTimeout(function(){
+      if(!(window.__AQUARIUM__ && window.__AQUARIUM__.ready)){
+        showFail('씬 초기화가 지연되고 있어요. 네트워크 상태를 확인하고 새로고침해 주세요.');
+      }
+    }, 15000);
+  })();
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+/* ══════════════════════ 유틸 ══════════════════════ */
+const rr=(a,b)=>a+Math.random()*(b-a);
+const clamp=THREE.MathUtils.clamp;
+
+/* ══════════════════════ 명언 데이터 ══════════════════════ */
+const QUOTES={
+  fish:[
+    { icon:'🐟', text:'사람은 자신이 사랑하는 것을 보호한다.', author:'자크 쿠스토' },
+    { icon:'🐟', text:'물이 되어라. 물은 저마다 흘러갈 길을 스스로 안다.', author:'브루스 리' },
+    { icon:'🐟', text:'최상의 선은 물과 같다. 만물을 이롭게 하되 다투지 않는다.', author:'노자' },
+  ],
+  plant:[
+    { icon:'🌿', text:'야생 속에 세계를 구하는 힘이 있다.', author:'헨리 데이비드 소로우' },
+    { icon:'🌿', text:'숨을 들이쉬며 나는 살아 있음을 느낀다. 내쉬며 지금 이 순간으로 돌아온다.', author:'틱낫한' },
+    { icon:'🌿', text:'자연의 보조를 따르라. 그 비결은 인내이다.', author:'랄프 월도 에머슨' },
+  ],
+  rock:[
+    { icon:'🪨', text:'우리는 그 무엇도 소유할 수 없다. 다만 잠시 함께할 뿐이다.', author:'법정' },
+    { icon:'🪨', text:'장애는 나를 꺾지 못한다. 견고한 마음 앞에서 장애는 물러선다.', author:'레오나르도 다 빈치' },
+    { icon:'🪨', text:'삶을 사는 두 가지 방법이 있다. 기적이 전혀 없다고 여기거나, 모든 것이 기적이라고 여기거나.', author:'알베르트 아인슈타인' },
+  ],
+  wood:[
+    { icon:'🪵', text:'나무는 성소다. 나무와 가까워지는 사람은 행복해질 수 있다.', author:'헤르만 헤세' },
+    { icon:'🪵', text:'믿음이 있다면 봄은 반드시 온다.', author:'법정' },
+    { icon:'🪵', text:'설사 내일 세상이 끝난대도, 오늘 나는 한 그루의 사과나무를 심겠다.', author:'마틴 루터' },
+  ],
+  bubble:[
+    { icon:'🫧', text:'한 알의 모래 속에 세계를, 한 송이 들꽃 속에 하늘을 보라.', author:'윌리엄 블레이크' },
+    { icon:'🫧', text:'인간은 갈대이다. 다만 생각하는 갈대일 뿐이다.', author:'블레즈 파스칼' },
+    { icon:'🫧', text:'같은 강에 두 번 들어설 수 없다.', author:'헤라클레이토스' },
+  ],
+};
+const lastQuoteIdx={};
+
+/* ══════════════════════ 공개 API 계약 ══════════════════════ */
+window.__AQUARIUM__={
+  ready:false,
+  fishCount:0,
+  speciesCount:0,
+  getClickTargets(){ return (typeof getClickTargetsImpl==='function') ? getClickTargetsImpl() : []; },
+};
+
+/* ══════════════════════ 렌더러 / 씬 / 카메라 ══════════════════════ */
+let renderer, scene, camera, controls;
+const loadingEl=document.getElementById('loading');
+const popupEl=document.getElementById('quote-popup');
+let READY=false, tSim=0;
+
+try{
+  renderer=new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
+}catch(err){
+  if(window.__AQ_SHOW_FAIL__) window.__AQ_SHOW_FAIL__('이 브라우저는 WebGL을 지원하지 않아 수족관을 표시할 수 없어요.');
+  throw err;
+}
+const PR=Math.min(window.devicePixelRatio||1, 2);
+renderer.setPixelRatio(PR);
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.0;
+document.body.prepend(renderer.domElement);
+
+scene=new THREE.Scene();
+const fog=new THREE.FogExp2(0x06283a, 0.028);
+scene.fog=fog;
+scene.background=fog.color; // 같은 Color 인스턴스 공유 → 프리셋에서 동시 변경
+
+camera=new THREE.PerspectiveCamera(52, innerWidth/innerHeight, 0.1, 220);
+camera.position.set(0, 11.5, 30);
+
+controls=new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 7.5, 0);
+controls.enableDamping=true;
+controls.dampingFactor=0.07;
+controls.enablePan=false;
+controls.rotateSpeed=0.55;
+controls.zoomSpeed=0.85;
+controls.minDistance=10;
+controls.maxDistance=46;
+controls.minPolarAngle=0.15;
+controls.maxPolarAngle=1.47;
+controls.update();
+
+/* ══════════════════════ 조명 ══════════════════════ */
+const hemi=new THREE.HemisphereLight(0x9fd4e8, 0x0b2733, 0.55);
+scene.add(hemi);
+
+const dir=new THREE.DirectionalLight(0xfff2dc, 2.6);
+dir.castShadow=true;
+dir.shadow.mapSize.set(1024,1024);
+dir.shadow.camera.left=-22; dir.shadow.camera.right=22;
+dir.shadow.camera.top=24;   dir.shadow.camera.bottom=-6;
+dir.shadow.camera.near=2;   dir.shadow.camera.far=80;
+dir.shadow.bias=-0.0004;
+dir.shadow.normalBias=0.02;
+scene.add(dir);
+dir.target.position.set(0,3,0);
+scene.add(dir.target);
+
+const pl1=new THREE.PointLight(0xbfefff, 70, 0, 2); pl1.position.set(-7, 13.5, 4);  scene.add(pl1);
+const pl2=new THREE.PointLight(0xffe6c0, 45, 0, 2); pl2.position.set(8, 13, -3);    scene.add(pl2);
+
+/* ══════════════════════ 프리셋 ══════════════════════ */
+const PRESETS={
+  '자연광':{ bg:0x06283a, dir:[0xfff2dc,2.6], hemi:[0x9fd4e8,0x0b2733,0.55], p1:[0xbfefff,70],  p2:[0xffe6c0,45],  beam:0xaee6ff, beamOp:0.055, caustic:0x9fe8ff },
+  '석양'  :{ bg:0x2a1030, dir:[0xff9a4d,2.2], hemi:[0xffb58a,0x1c0a24,0.50], p1:[0xff8a5c,110], p2:[0xff5c8a,60],  beam:0xffb27a, beamOp:0.075, caustic:0xffc9a0 },
+  '자외선':{ bg:0x12062e, dir:[0x8a63ff,2.0], hemi:[0x7a5cff,0x0a0318,0.60], p1:[0xa64dff,130], p2:[0x4d6bff,90],  beam:0x8a5cff, beamOp:0.085, caustic:0xb49aff },
+  '네온'  :{ bg:0x03151c, dir:[0x35e0ff,1.7], hemi:[0x35e0ff,0x02141c,0.50], p1:[0x00f0ff,150], p2:[0xff2ea0,130], beam:0x53f2ff, beamOp:0.095, caustic:0x66f6ff },
+  '루비'  :{ bg:0x23040f, dir:[0xff4d6b,2.1], hemi:[0xff6b8a,0x160208,0.50], p1:[0xff3355,140], p2:[0xffb199,60],  beam:0xff5470, beamOp:0.080, caustic:0xff9db0 },
+};
+let cur=PRESETS['자연광'], pl1Base=cur.p1[1], pl2Base=cur.p2[1], beamOp=cur.beamOp;
+
+const brightSlider=document.getElementById('brightness-slider');
+const fogSlider=document.getElementById('fog-slider');
+const angleSlider=document.getElementById('angle-slider');
+
+function applyBrightness(){
+  const v=+brightSlider.value;
+  renderer.toneMappingExposure=0.25+0.0075*v;
+  const s=0.35+0.0065*v;
+  dir.intensity=cur.dir[1]*s;
+  hemi.intensity=cur.hemi[2]*(0.4+0.006*v);
+  pl1.intensity=pl1Base*(0.4+0.006*v);
+  pl2.intensity=pl2Base*(0.4+0.006*v);
+}
+function applyFog(){ fog.density=(+fogSlider.value)/1000; }
+function applyAngle(){
+  const az=(+angleSlider.value)*Math.PI/180, el=0.95, R=34;
+  dir.position.set(Math.sin(az)*Math.cos(el)*R, Math.sin(el)*R, Math.cos(az)*Math.cos(el)*R);
+}
+brightSlider.addEventListener('input', applyBrightness);
+fogSlider.addEventListener('input', applyFog);
+angleSlider.addEventListener('input', applyAngle);
+
+function applyPreset(name){
+  cur=PRESETS[name];
+  document.querySelectorAll('#light-panel [data-preset]').forEach(b=>{
+    b.classList.toggle('active', b.dataset.preset===name);
+  });
+  fog.color.setHex(cur.bg);
+  fog.density=(+fogSlider.value)/1000;
+  dir.color.setHex(cur.dir[0]);
+  hemi.color.setHex(cur.hemi[0]); hemi.groundColor.setHex(cur.hemi[1]);
+  pl1.color.setHex(cur.p1[0]); pl1Base=cur.p1[1];
+  pl2.color.setHex(cur.p2[0]); pl2Base=cur.p2[1];
+  beamMats.forEach(m=>m.color.setHex(cur.beam));
+  beamOp=cur.beamOp;
+  cauUni.uCauCol.value.setHex(cur.caustic);
+  applyBrightness();
+}
+document.querySelectorAll('#light-panel [data-preset]').forEach(b=>{
+  b.addEventListener('click', ()=>applyPreset(b.dataset.preset));
+});
+const lpToggle=document.getElementById('lp-toggle');
+lpToggle.addEventListener('click', ()=>{
+  const panel=document.getElementById('light-panel');
+  const collapsed=panel.classList.toggle('collapsed');
+  lpToggle.textContent=collapsed ? '+' : '–';
+  lpToggle.setAttribute('aria-expanded', String(!collapsed));
+});
+
+/* ══════════════════════ 지형: 모래바닥 (+ 코스틱 셰이더) ══════════════════════ */
+const cauUni={ uTime:{value:0}, uCauCol:{value:new THREE.Color(0x9fe8ff)} };
+
+const sandGeo=new THREE.PlaneGeometry(70,70,46,46);
+sandGeo.rotateX(-Math.PI/2);
+{
+  const pa=sandGeo.attributes.position;
+  for(let i=0;i<pa.count;i++){
+    const x=pa.getX(i), z=pa.getZ(i);
+    pa.setY(i, Math.sin(x*0.32)*Math.cos(z*0.41)*0.22 + Math.sin(x*0.83+z*0.57)*0.10);
+  }
+  sandGeo.computeVertexNormals();
+}
+const sandMat=new THREE.MeshStandardMaterial({ color:0xcdbb96, roughness:1, metalness:0 });
+sandMat.onBeforeCompile=(sh)=>{
+  sh.uniforms.uTime=cauUni.uTime;
+  sh.uniforms.uCauCol=cauUni.uCauCol;
+  sh.uniforms.uCauStr={ value:0.5 };
+  sh.vertexShader='varying vec3 vWp;\n'+sh.vertexShader.replace(
+    '#include <fog_vertex>',
+    '#include <fog_vertex>\n\tvWp=(modelMatrix*vec4(transformed,1.0)).xyz;'
+  );
+  sh.fragmentShader=
+    'uniform float uTime,uCauStr;\nuniform vec3 uCauCol;\nvarying vec3 vWp;\n'+
+    'float cst(vec2 uv,float t){\n'+
+    '  vec2 p=mod(uv*6.2831853,6.2831853)-250.0;\n  vec2 i=p;\n  float c=1.0;\n  float inten=0.005;\n'+
+    '  for(int n=0;n<3;n++){\n'+
+    '    float tt=t*(1.0-(3.5/float(n+1)));\n'+
+    '    i=p+vec2(cos(tt-i.x)+sin(tt+i.y), sin(tt-i.y)+cos(tt+i.x));\n'+
+    '    c+=1.0/length(vec2(p.x/(sin(i.x+tt)/inten), p.y/(cos(i.y+tt)/inten)));\n'+
+    '  }\n  c/=3.0;\n  c=1.17-pow(c,1.4);\n  return min(pow(abs(c),7.0),1.6);\n}\n'+
+    sh.fragmentShader.replace(
+      '#include <emissivemap_fragment>',
+      '#include <emissivemap_fragment>\n\ttotalEmissiveRadiance+=uCauCol*cst(vWp.xz*0.5,uTime*0.7)*uCauStr;'
+    );
+};
+sandMat.customProgramCacheKey=()=>'caustic-sand';
+const sand=new THREE.Mesh(sandGeo, sandMat);
+sand.receiveShadow=true;
+scene.add(sand);
+
+/* ══════════════════════ 이와구미 돌 ══════════════════════ */
+const rockMat=new THREE.MeshStandardMaterial({ color:0x7d8078, roughness:0.95, metalness:0.02, flatShading:true });
+function rockGeo(r){
+  const g=new THREE.IcosahedronGeometry(r,1);
+  const p=g.attributes.position, v=new THREE.Vector3(), n=new THREE.Vector3();
+  for(let i=0;i<p.count;i++){
+    v.fromBufferAttribute(p,i);
+    n.copy(v).normalize();
+    const h=Math.sin(v.x*3.1+r)*Math.cos(v.y*2.7-r)*Math.sin(v.z*3.7+r*2);
+    v.addScaledVector(n, h*r*0.32);
+    p.setXYZ(i,v.x,v.y,v.z);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+const rocks=[];
+const ROCK_DEFS=[
+  { pos:[3.4,0.95,0.6],  r:1.6, s:[1.15,0.82,1.0], ry:0.5 },
+  { pos:[-4.6,0.6,-2.2], r:1.1, s:[1.0,0.75,1.1],  ry:2.4 },
+  { pos:[-2.2,0.42,2.6], r:0.7, s:[1.1,0.8,1.0],   ry:4.0 },
+];
+for(const d of ROCK_DEFS){
+  const m=new THREE.Mesh(rockGeo(d.r), rockMat);
+  m.position.set(...d.pos);
+  m.scale.set(...d.s);
+  m.rotation.y=d.ry;
+  m.castShadow=true; m.receiveShadow=true;
+  m.userData.quoteType='rock';
+  scene.add(m); rocks.push(m);
+}
+const ROCK_EXCLUDE=ROCK_DEFS.map(d=>({x:d.pos[0], z:d.pos[2], r:d.r*d.s[0]+0.7}));
+
+/* ══════════════════════ 유목 ══════════════════════ */
+const WOOD_TINT=0x5a4433;
+const woodParts=[];
+function addBranch(points, radius){
+  const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));
+  const t=new THREE.TubeGeometry(curve, 24, radius, 7, false);
+  woodParts.push(t);
+  for(const endPt of [points[0], points[points.length-1]]){
+    const cap=new THREE.SphereGeometry(radius*1.02, 8, 6);
+    cap.translate(...endPt);
+    woodParts.push(cap);
+  }
+}
+addBranch([[-6.5,0.3,-3.4],[-5.4,1.9,-2.8],[-4.0,3.4,-1.9],[-2.6,4.4,-0.8]], 0.26);
+addBranch([[-4.6,2.6,-2.2],[-3.2,3.3,-2.9],[-2.0,3.8,-3.4]], 0.13);
+addBranch([[-3.4,3.0,-1.7],[-2.4,3.9,-0.2],[-2.1,4.6,0.6]], 0.11);
+const woodMesh=new THREE.Mesh(mergeGeometries(woodParts),
+  new THREE.MeshStandardMaterial({ color:WOOD_TINT, roughness:0.9, metalness:0 }));
+woodMesh.castShadow=true; woodMesh.receiveShadow=true;
+woodMesh.userData.quoteType='wood';
+scene.add(woodMesh);
+const WOOD_REP=new THREE.Vector3(-4.0,3.4,-1.9);
+const AIRSTONE_POS=new THREE.Vector3(-5.6,0.12,-3.0);
+
+/* 에어스톤 */
+const airstone=new THREE.Mesh(
+  new THREE.CylinderGeometry(0.45,0.5,0.14,16),
+  new THREE.MeshStandardMaterial({ color:0x3c4550, roughness:1 })
+);
+airstone.position.copy(AIRSTONE_POS);
+airstone.receiveShadow=true;
+scene.add(airstone);
+
+/* ══════════════════════ 자갈 ══════════════════════ */
+{
+  const N=96;
+  const pg=new THREE.IcosahedronGeometry(0.09,0);
+  const pm=new THREE.MeshStandardMaterial({ roughness:0.95 });
+  const im=new THREE.InstancedMesh(pg,pm,N);
+  const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), eu=new THREE.Euler(), sc=new THREE.Vector3(), col=new THREE.Color();
+  const tones=[0x8f8578,0x6f6a5e,0x9aa08f,0x7c7468,0x5e5a50];
+  for(let i=0;i<N;i++){
+    let x,z;
+    if(i<N*0.25){
+      const c=ROCK_DEFS[i%ROCK_DEFS.length];
+      const a=rr(0,Math.PI*2), d=rr(c.r*c.s[0]+0.3, c.r*c.s[0]+1.3);
+      x=c.pos[0]+Math.cos(a)*d; z=c.pos[2]+Math.sin(a)*d;
+    }else{
+      x=rr(-12,12); z=rr(-6.5,6.5);
+      for(const e of ROCK_EXCLUDE){ if(Math.hypot(x-e.x,z-e.z)<e.r){ x+=e.r; } }
+    }
+    eu.set(rr(0,3),rr(0,3),rr(0,3)); q.setFromEuler(eu);
+    sc.set(rr(0.5,1.6),rr(0.35,0.9),rr(0.5,1.6));
+    m4.compose(new THREE.Vector3(x,0.03,z), q, sc);
+    im.setMatrixAt(i,m4);
+    im.setColorAt(i, col.setHex(tones[i%tones.length]).multiplyScalar(rr(0.85,1.1)));
+  }
+  im.instanceMatrix.needsUpdate=true;
+  if(im.instanceColor) im.instanceColor.needsUpdate=true;
+  im.receiveShadow=true;
+  im.frustumCulled=false;
+  scene.add(im);
+}
+
+/* ══════════════════════ 식물 (흔들림 셰이더) ══════════════════════ */
+const swayUniforms=[]; // 매 프레임 uTime 갱신 대상
+function swayMaterial(key, color, amp, height, speed){
+  const u={ uTime:{value:0}, uAmp:{value:amp}, uHeight:{value:height}, uSpd:{value:speed} };
+  const mat=new THREE.MeshStandardMaterial({ color, roughness:0.85, metalness:0, side:THREE.DoubleSide });
+  mat.onBeforeCompile=(sh)=>{
+    Object.assign(sh.uniforms,u);
+    sh.vertexShader='uniform float uTime,uAmp,uHeight,uSpd;\n'+sh.vertexShader.replace(
+      '#include <begin_vertex>',
+      [
+        '#include <begin_vertex>',
+        '#ifdef USE_INSTANCING',
+        '  float swPh=instanceMatrix[3][0]*1.31+instanceMatrix[3][2]*2.17;',
+        '#else',
+        '  float swPh=0.0;',
+        '#endif',
+        '  float swF=smoothstep(0.0,1.0,position.y/uHeight);',
+        '  float swT=uTime*uSpd+swPh+position.y*0.5;',
+        '  transformed.x+=sin(swT)*swF*uAmp;',
+        '  transformed.z+=cos(swT*0.83+swPh)*swF*uAmp*0.6;',
+      ].join('\n')
+    );
+    mat.userData.shader=sh;
+  };
+  mat.customProgramCacheKey=()=>'sway-'+key;
+  swayUniforms.push(u);
+  return mat;
+}
+
+/* 전경 카펫 (잔디 다발) */
+function tuftGeo(){
+  const parts=[];
+  for(let i=0;i<6;i++){
+    const h=rr(0.16,0.34);
+    const c=new THREE.ConeGeometry(rr(0.025,0.045),h,5);
+    c.translate(rr(-0.09,0.09), h/2, rr(-0.09,0.09));
+    c.rotateX(rr(-0.25,0.25)); c.rotateZ(rr(-0.25,0.25));
+    parts.push(c);
+  }
+  return mergeGeometries(parts);
+}
+const carpetPos=[];
+{
+  const CN=460;
+  const im=new THREE.InstancedMesh(tuftGeo(), swayMaterial('carpet',0x3fae5a,0.05,0.4,1.2), CN);
+  const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=new THREE.Vector3(), col=new THREE.Color();
+  let placed=0, tries=0;
+  while(placed<CN && tries<3000){
+    tries++;
+    const x=rr(-12,12), z=rr(-6.5,6.5);
+    let ok=true;
+    for(const e of ROCK_EXCLUDE){ if(Math.hypot(x-e.x,z-e.z)<e.r){ ok=false; break; } }
+    if(ok && Math.hypot(x-AIRSTONE_POS.x,z-AIRSTONE_POS.z)<1.2) ok=false;
+    if(!ok) continue;
+    const s=rr(0.7,1.5);
+    q.setFromAxisAngle(new THREE.Vector3(0,1,0), rr(0,Math.PI*2));
+    m4.compose(new THREE.Vector3(x,0,z), q, sc.set(s,rr(0.8,1.4),s));
+    im.setMatrixAt(placed,m4);
+    im.setColorAt(placed, col.setHSL(rr(0.29,0.38), rr(0.5,0.7), rr(0.3,0.45)));
+    if(placed<3) carpetPos.push(new THREE.Vector3(x,0.16*s,z));
+    placed++;
+  }
+  im.instanceMatrix.needsUpdate=true;
+  if(im.instanceColor) im.instanceColor.needsUpdate=true;
+  im.receiveShadow=true;
+  im.frustumCulled=false;
+  im.userData.quoteType='plant';
+  scene.add(im);
+  window.__CARPET_IM__=im;
+}
+
+/* 줄기형 수초 */
+function stemGeo(){
+  const parts=[];
+  const H=2.7;
+  const st=new THREE.CylinderGeometry(0.025,0.045,H,6);
+  st.translate(0,H/2,0);
+  parts.push(st);
+  for(let lvl=0;lvl<5;lvl++){
+    const y=0.35+lvl*0.48;
+    for(let k=0;k<4;k++){
+      const l=new THREE.PlaneGeometry(0.1,0.52,1,3);
+      l.translate(0,0.26,0); // 밑동을 원점으로
+      const lp=l.attributes.position;
+      for(let i=0;i<lp.count;i++){
+        const yy=lp.getY(i);
+        lp.setZ(i, Math.pow(Math.max(0,yy)/0.52,2)*0.14);
+      }
+      l.computeVertexNormals();
+      l.scale(rr(0.8,1.2),rr(0.8,1.25),1);
+      l.rotateX(-1.05);
+      l.rotateY(k*Math.PI/2+rr(-0.3,0.3));
+      l.translate(0,y,0);
+      parts.push(l);
+    }
+  }
+  return mergeGeometries(parts);
+}
+const stemReps=[];
+{
+  const centers=[[-8.6,-4.6],[9.3,-4.4],[-10.2,2.2],[8.6,2.8],[-2.6,-6.0]];
+  const items=[];
+  for(const c of centers){
+    const n=4+Math.floor(Math.random()*3);
+    for(let i=0;i<n;i++) items.push([c[0]+rr(-0.9,0.9), c[1]+rr(-0.7,0.7)]);
+  }
+  const im=new THREE.InstancedMesh(stemGeo(), swayMaterial('stem',0x2f8f4e,0.16,2.8,1.0), items.length);
+  const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=new THREE.Vector3(), col=new THREE.Color();
+  items.forEach((p,i)=>{
+    const sy=rr(0.75,1.35), s=rr(0.85,1.15);
+    q.setFromAxisAngle(new THREE.Vector3(0,1,0), rr(0,Math.PI*2));
+    m4.compose(new THREE.Vector3(p[0],0,p[1]), q, sc.set(s,sy,s));
+    im.setMatrixAt(i,m4);
+    im.setColorAt(i, col.setHSL(rr(0.32,0.4), rr(0.5,0.65), rr(0.26,0.4)));
+    if(stemReps.length<2) stemReps.push(new THREE.Vector3(p[0],1.5*sy,p[1]));
+  });
+  im.instanceMatrix.needsUpdate=true;
+  if(im.instanceColor) im.instanceColor.needsUpdate=true;
+  im.castShadow=true; im.receiveShadow=true;
+  im.frustumCulled=false;
+  im.userData.quoteType='plant';
+  scene.add(im);
+}
+
+/* 붉은 포인트 수초 */
+const redReps=[];
+{
+  const spots=[[1.8,3.2],[-0.8,-3.4],[5.6,-2.6],[-6.4,3.4],[2.6,-4.9],[-8.2,-1.2],[6.8,1.2],[-3.4,4.6],[0.4,5.2]];
+  const parts=[];
+  const core=new THREE.ConeGeometry(0.06,0.3,6);
+  core.translate(0,0.15,0);
+  parts.push(core);
+  for(let k=0;k<9;k++){
+    const l=new THREE.PlaneGeometry(0.16,0.75,1,4);
+    l.translate(0,0.375,0);
+    const lp=l.attributes.position;
+    for(let i=0;i<lp.count;i++){
+      const yy=lp.getY(i);
+      lp.setZ(i, Math.pow(Math.max(0,yy)/0.75,1.6)*0.3);
+    }
+    l.computeVertexNormals();
+    l.scale(1,rr(0.8,1.15),1);
+    l.rotateX(-(0.65+(k%3)*0.25));
+    l.rotateY(k*(Math.PI*2/9)+rr(-0.15,0.15));
+    l.translate(0,0.12,0);
+    parts.push(l);
+  }
+  const geo=mergeGeometries(parts);
+  const im=new THREE.InstancedMesh(geo, swayMaterial('red',0xffffff,0.1,1.1,0.9), spots.length);
+  const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=new THREE.Vector3(), col=new THREE.Color();
+  spots.forEach((p,i)=>{
+    const s=rr(0.8,1.25);
+    q.setFromAxisAngle(new THREE.Vector3(0,1,0), rr(0,Math.PI*2));
+    m4.compose(new THREE.Vector3(p[0],0,p[1]), q, sc.set(s,rr(0.85,1.3),s));
+    im.setMatrixAt(i,m4);
+    im.setColorAt(i, col.setHSL(rr(0.98,1.02)%1, rr(0.65,0.85), rr(0.3,0.42)));
+    if(redReps.length<2) redReps.push(new THREE.Vector3(p[0],0.5,p[1]));
+  });
+  im.instanceMatrix.needsUpdate=true;
+  if(im.instanceColor) im.instanceColor.needsUpdate=true;
+  im.castShadow=true;
+  im.frustumCulled=false;
+  im.userData.quoteType='plant';
+  scene.add(im);
+}
+
+/* ══════════════════════ 수면 ══════════════════════ */
+const waterUni={ uT:{value:0} };
+{
+  const wg=new THREE.PlaneGeometry(70,70,40,40);
+  wg.rotateX(Math.PI/2);
+  const wm=new THREE.MeshStandardMaterial({
+    color:0xbfeaff, transparent:true, opacity:0.13,
+    roughness:0.15, metalness:0, side:THREE.DoubleSide, depthWrite:false,
+  });
+  wm.onBeforeCompile=(sh)=>{
+    sh.uniforms.uT=waterUni.uT;
+    sh.vertexShader='uniform float uT;\n'+sh.vertexShader.replace(
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\n\ttransformed.y+=sin(position.x*0.43+uT*1.15)*0.05+cos(position.z*0.37+uT*0.85)*0.05;'
+    );
+  };
+  wm.customProgramCacheKey=()=>'water-ripple';
+  const water=new THREE.Mesh(wg,wm);
+  water.position.y=15.4;
+  water.renderOrder=7;
+  scene.add(water);
+}
+
+/* ══════════════════════ 광선 막대 ══════════════════════ */
+const beamMats=[];
+function beamPlane(x,z,ry,rz){
+  const g=new THREE.PlaneGeometry(4.2,17);
+  const pa=g.attributes.position;
+  const cols=new Float32Array(pa.count*4);
+  for(let i=0;i<pa.count;i++){
+    const a=Math.pow(clamp((pa.getY(i)+8.5)/17,0,1),1.6)*0.55;
+    cols[i*4]=1; cols[i*4+1]=1; cols[i*4+2]=1; cols[i*4+3]=a;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(cols,4));
+  const m=new THREE.MeshBasicMaterial({
+    vertexColors:true, transparent:true, opacity:1,
+    blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide,
+  });
+  const mesh=new THREE.Mesh(g,m);
+  mesh.position.set(x,7.4,z);
+  mesh.rotation.set(0,ry,rz);
+  mesh.renderOrder=6;
+  mesh.frustumCulled=false;
+  scene.add(mesh);
+  beamMats.push(m);
+}
+beamPlane(-4.5,-2.0, 0.35, 0.14);
+beamPlane( 0.5,-1.0,-0.20,-0.10);
+beamPlane( 5.5,-3.0, 0.15, 0.18);
+
+/* ══════════════════════ 버블 (GPU 재활용 Points) ══════════════════════ */
+const BN=64, BUB_H=14.8;
+const bubStart=new Float32Array(BN*3);
+const bubData=new Float32Array(BN*4); // size, speed, wobFreq, wobAmp
+for(let i=0;i<BN;i++){
+  bubStart[i*3]  =AIRSTONE_POS.x+rr(-0.26,0.26);
+  bubStart[i*3+1]=rr(0, BUB_H);
+  bubStart[i*3+2]=AIRSTONE_POS.z+rr(-0.26,0.26);
+  bubData[i*4]  =rr(7,15);
+  bubData[i*4+1]=rr(2.2,4.2);
+  bubData[i*4+2]=rr(2.5,5.0);
+  bubData[i*4+3]=rr(0.10,0.30);
+}
+const bubGeo=new THREE.BufferGeometry();
+bubGeo.setAttribute('position', new THREE.BufferAttribute(bubStart,3));
+bubGeo.setAttribute('aData', new THREE.BufferAttribute(bubData,4));
+const bubUni={ uTime:{value:0}, uH:{value:BUB_H}, uPr:{value:PR}, uCol:{value:new THREE.Color(0xcfeeff)} };
+const bubbles=new THREE.Points(bubGeo, new THREE.ShaderMaterial({
+  uniforms:bubUni, transparent:true, depthWrite:false,
+  vertexShader:[
+    'attribute vec4 aData;',
+    'uniform float uTime,uH,uPr;',
+    'varying float vA;',
+    'void main(){',
+    '  float y=mod(position.y+aData.y*uTime,uH);',
+    '  float ph=aData.z;',
+    '  vec3 p=vec3(position.x+sin(uTime*ph+ph)*aData.w, y, position.z+cos(uTime*ph*0.77+ph*1.7)*aData.w*0.7);',
+    '  float grow=0.55+0.45*(y/uH);',
+    '  vA=1.0-smoothstep(uH*0.72,uH*0.97,y);',
+    '  vec4 mv=modelViewMatrix*vec4(p,1.0);',
+    '  gl_PointSize=aData.x*grow*uPr*(42.0/max(1.0,-mv.z));',
+    '  gl_Position=projectionMatrix*mv;',
+    '}',
+  ].join('\n'),
+  fragmentShader:[
+    'varying float vA;',
+    'uniform vec3 uCol;',
+    'void main(){',
+    '  vec2 uv=gl_PointCoord-0.5;',
+    '  float d=length(uv);',
+    '  if(d>0.5) discard;',
+    '  float rim=smoothstep(0.5,0.42,d)*smoothstep(0.18,0.42,d);',
+    '  float body=smoothstep(0.5,0.0,d)*0.10;',
+    '  float spec=smoothstep(0.14,0.0,length(uv-vec2(-0.13,-0.15)));',
+    '  float a=(rim*0.5+body+spec*0.9)*vA;',
+    '  if(a<0.01) discard;',
+    '  gl_FragColor=vec4(uCol+vec3(spec*0.5),a);',
+    '}',
+  ].join('\n'),
+}));
+bubbles.frustumCulled=false;
+bubbles.renderOrder=4;
+scene.add(bubbles);
+
+/* 먹물입자(마린스노우) 분위기용 */
+let snowUniformRef=null;
+{
+  const SN=110, SH=16;
+  const pos=new Float32Array(SN*3), dat=new Float32Array(SN*4);
+  for(let i=0;i<SN;i++){
+    pos[i*3]=rr(-13,13); pos[i*3+1]=rr(0,SH); pos[i*3+2]=rr(-7.5,7.5);
+    dat[i*4]=rr(2.5,5); dat[i*4+1]=rr(0.25,0.6); dat[i*4+2]=rr(0,6.28); dat[i*4+3]=rr(0.3,1.2);
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  g.setAttribute('aData', new THREE.BufferAttribute(dat,4));
+  const uni={ uTime:{value:0}, uH:{value:SH}, uPr:{value:PR} };
+  snowUniformRef=uni;
+  const m=new THREE.ShaderMaterial({
+    uniforms:uni, transparent:true, depthWrite:false,
+    blending:THREE.AdditiveBlending,
+    vertexShader:[
+      'attribute vec4 aData;',
+      'uniform float uTime,uH,uPr;',
+      'void main(){',
+      '  vec3 p=position;',
+      '  p.y=mod(p.y-uTime*aData.y,uH);',
+      '  p.x+=sin(uTime*0.3+aData.z)*aData.w*0.4;',
+      '  vec4 mv=modelViewMatrix*vec4(p,1.0);',
+      '  gl_PointSize=aData.x*uPr*(30.0/max(1.0,-mv.z));',
+      '  gl_Position=projectionMatrix*mv;',
+      '}',
+    ].join('\n'),
+    fragmentShader:[
+      'void main(){',
+      '  float d=length(gl_PointCoord-0.5);',
+      '  if(d>0.5) discard;',
+      '  float a=smoothstep(0.5,0.0,d)*0.16;',
+      '  gl_FragColor=vec4(vec3(0.75,0.9,1.0),a);',
+      '}',
+    ].join('\n'),
+  });
+  const pts=new THREE.Points(g,m);
+  pts.frustumCulled=false;
+  pts.renderOrder=3;
+  scene.add(pts);
+}
+
+/* ══════════════════════ 물고기 ══════════════════════ */
+function finGeo(pts){
+  const g=new THREE.BufferGeometry();
+  const arr=new Float32Array(pts.length*3);
+  pts.forEach((p,i)=>arr.set(p,i*3));
+  g.setAttribute('position', new THREE.BufferAttribute(arr,3));
+  const idx=[];
+  for(let i=1;i<pts.length-1;i++) idx.push(0,i,i+1);
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+function paint(g,fn){
+  const p=g.attributes.position;
+  const col=new Float32Array(p.count*3);
+  const v=new THREE.Vector3(), c=new THREE.Color();
+  for(let i=0;i<p.count;i++){
+    v.fromBufferAttribute(p,i);
+    fn(v,c);
+    col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col,3));
+  return g;
+}
+function prep(g,s,t){
+  g.scale(s[0],s[1],s[2]);
+  g.translate(t[0],t[1],t[2]);
+  g.deleteAttribute('uv');
+  return g;
+}
+function tetraPaint(v,c){
+  if(v.z<-0.64){ c.setHex(0xc7d3de); }
+  else if(v.y>0.24&&v.z<0.35){ c.setHex(0x93a7b8); }
+  else if(v.y<-0.24&&v.z>0){ c.setHex(0xaebccb); }
+  else if(v.y>-0.01&&v.y<0.13&&v.z>-0.58){ c.setHex(0x27d8f0); }
+  else if(v.z<-0.08&&v.y<0.02){ c.setHex(0xd93a3a); }
+  else{ c.setHex(0xdfe9f2).multiplyScalar(0.78+0.22*clamp(Math.abs(v.x)*4+0.4,0,1)); }
+}
+function guppyPaint(v,c){
+  if(v.z<-0.66){ c.setHex(0xff7a2a).lerp(new THREE.Color(0xffc94d), clamp((-v.z-0.66)/0.7,0,1)); }
+  else if(v.y>0.24&&v.z<0.35){ c.setHex(0xe8843c); }
+  else if(v.y<-0.24&&v.z>0){ c.setHex(0xf3b25c); }
+  else if(v.y>0.15){ c.setHex(0xd98f3f); }
+  else{ c.setHex(0xf3c96b); }
+}
+function angelPaint(v,c){
+  const fin=(v.y>0.85)||(v.y<-0.85)||(v.z<-0.75);
+  if(fin){ c.setHex(0x46525e); }
+  else if(Math.abs(v.y)<0.95 && Math.sin(v.z*11)>0.42){ c.setHex(0x232a31); }
+  else{ c.setHex(0xdae3ec); }
+}
+function coryPaint(v,c){
+  const h=Math.abs((Math.sin(v.x*12.9898+v.y*78.233+v.z*37.719)*43758.5453)%1);
+  if(v.y<0.02){ c.setHex(0xb59a72).lerp(new THREE.Color(0x8f7854), h*0.5); }
+  else{ c.setHex(0x77603f).lerp(new THREE.Color(0x4f4028), h); }
+}
+function smallFishGeo(tailLen,tailSpread,paintFn){
+  const body=prep(new THREE.SphereGeometry(0.5,16,12), [0.44,0.6,1.45], [0,0,0]);
+  const tail=finGeo([[0,0.03,-0.66],[0,tailSpread,-tailLen],[0,0,-tailLen*0.82],[0,-tailSpread,-tailLen],[0,-0.03,-0.66]]);
+  const dorsal=finGeo([[0,0.26,0.1],[0,0.45,-0.12],[0,0.25,-0.28]]);
+  const pelvic=finGeo([[0,-0.24,0.22],[0,-0.4,0.02],[0,-0.23,-0.05]]);
+  const merged=mergeGeometries([body,tail,dorsal,pelvic]);
+  return paint(merged,paintFn);
+}
+function angelGeo(){
+  const body=prep(new THREE.SphereGeometry(0.5,20,14), [0.17,1.02,0.92], [0,0,0]);
+  const dorsal=finGeo([[0,0.72,0.32],[0,1.6,-0.85],[0,0.55,-0.55]]);
+  const anal=finGeo([[0,-0.72,0.32],[0,-1.6,-0.85],[0,-0.55,-0.55]]);
+  const tail=finGeo([[0,0.07,-0.8],[0,0.3,-1.3],[0,-0.3,-1.3],[0,-0.07,-0.8]]);
+  return paint(mergeGeometries([body,dorsal,anal,tail]), angelPaint);
+}
+function coryGeo(){
+  const body=new THREE.SphereGeometry(0.5,18,14);
+  body.scale(0.62,0.36,1.15);
+  body.translate(0,0.05,0);
+  const bp=body.attributes.position;
+  for(let i=0;i<bp.count;i++){
+    const y=bp.getY(i);
+    if(y<0.02) bp.setY(i, y*0.35-0.02);
+  }
+  body.computeVertexNormals();
+  body.deleteAttribute('uv');
+  const dorsal=finGeo([[0,0.2,0.15],[0,0.5,-0.1],[0,0.18,-0.28]]);
+  const tail=finGeo([[0,0.03,-0.68],[0,0.26,-1.05],[0,-0.26,-1.05],[0,-0.03,-0.68]]);
+  return paint(mergeGeometries([body,dorsal,tail]), coryPaint);
+}
+
+function fishMaterial(spec){
+  const u={ uTime:{value:0}, uSpeed:{value:spec.freq}, uWave:{value:spec.wave}, uBend:{value:spec.bend} };
+  const mat=new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.5, metalness:0.3, side:THREE.DoubleSide });
+  mat.onBeforeCompile=(sh)=>{
+    Object.assign(sh.uniforms,u);
+    sh.vertexShader='uniform float uTime,uSpeed,uWave,uBend;\n'+sh.vertexShader.replace(
+      '#include <begin_vertex>',
+      [
+        '#include <begin_vertex>',
+        'float mBend=position.z>0.0?position.z:-position.z*2.0;',
+        'transformed.x+=mBend*mBend*sin(uTime*uSpeed+mBend*uWave)*uBend;',
+      ].join('\n')
+    );
+    mat.userData.shader=sh;
+  };
+  mat.customProgramCacheKey=()=>'fish-'+spec.key;
+  return mat;
+}
+
+const SPECIES=[
+  { key:'tetra', count:9, scale:0.72, speedMin:2.0, speedMax:3.6, freq:9,   wave:7,   bend:0.34, maxAcc:9, cohesion:true,
+    bounds:{x:[-11.5,11.5],y:[3.5,13],z:[-6,6]}, geo:()=>smallFishGeo(1.12,0.30,tetraPaint) },
+  { key:'angel', count:3, scale:1.35, speedMin:0.7, speedMax:1.4, freq:3.2, wave:5,   bend:0.09, maxAcc:3, cohesion:false,
+    bounds:{x:[-10,10],y:[4,12],z:[-5,5]}, geo:angelGeo },
+  { key:'cory',  count:2, scale:1.05, speedMin:0.4, speedMax:1.1, freq:5,   wave:6.5, bend:0.26, maxAcc:4, cohesion:false,
+    bounds:{x:[-10.5,10.5],y:[1.2,3.6],z:[-5.5,5.5]}, geo:coryGeo },
+  { key:'guppy', count:4, scale:0.64, speedMin:1.4, speedMax:2.6, freq:11,  wave:8,   bend:0.42, maxAcc:8, cohesion:true,
+    bounds:{x:[-11,11],y:[4.5,13],z:[-6,6]}, geo:()=>smallFishGeo(1.3,0.42,guppyPaint) },
+];
+
+const fishes=[];
+const _v1=new THREE.Vector3(), _v2=new THREE.Vector3();
+const _dummy=new THREE.Object3D();
+
+class Fish{
+  constructor(mesh,spec){
+    this.mesh=mesh;
+    this.spec=spec;
+    this.pos=mesh.position;
+    this.school=spec.cohesion;
+    const b=spec.bounds;
+    this.pos.set(rr(b.x[0]*0.7,b.x[1]*0.7), rr(b.y[0],b.y[1]), rr(b.z[0]*0.7,b.z[1]*0.7));
+    const a=rr(0,Math.PI*2);
+    this.vel=new THREE.Vector3(Math.cos(a),0,Math.sin(a)).multiplyScalar(spec.speedMin);
+    this.phase=rr(0,100);
+    this.retarget=rr(0,6);
+    this.target=new THREE.Vector3();
+    this.roll=0;
+    this.prevYaw=Math.atan2(this.vel.x,this.vel.z);
+    this.newTarget();
+  }
+  newTarget(){
+    const b=this.spec.bounds;
+    this.target.set(rr(b.x[0],b.x[1])*0.85, rr(b.y[0],b.y[1]), rr(b.z[0],b.z[1])*0.85);
+    this.retarget=rr(5,11);
+  }
+  update(dt,t,fishes){
+    const s=this.spec, b=s.bounds, p=this.pos, v=this.vel;
+    const acc=_v1.set(0,0,0);
+    this.retarget-=dt;
+    if(this.retarget<=0) this.newTarget();
+    acc.add(_v2.subVectors(this.target,p).multiplyScalar(0.25));
+    acc.x+=Math.sin(t*0.9+this.phase)*0.55;
+    acc.y+=Math.sin(t*0.63+this.phase*1.7)*0.30;
+    acc.z+=Math.cos(t*0.81+this.phase)*0.55;
+    for(const o of fishes){
+      if(o===this) continue;
+      _v2.subVectors(p,o.pos);
+      const d=_v2.length();
+      const rad=(s.scale+o.spec.scale)*1.1;
+      if(d<rad&&d>1e-4) acc.addScaledVector(_v2.divideScalar(d), (1-d/rad)*(o.school===this.school?3.2:4.5));
+    }
+    if(s.cohesion){
+      let cx=0,cy=0,cz=0,n=0;
+      for(const o of fishes){
+        if(o!==this&&o.spec.key===s.key){ cx+=o.pos.x; cy+=o.pos.y; cz+=o.pos.z; n++; }
+      }
+      if(n>0){ acc.x+=(cx/n-p.x)*0.35; acc.y+=(cy/n-p.y)*0.35; acc.z+=(cz/n-p.z)*0.35; }
+    }
+    const mx=1.6,my=1.2;
+    if(p.x>b.x[1]-mx) acc.x-=(p.x-(b.x[1]-mx))*2.2;
+    if(p.x<b.x[0]+mx) acc.x+=((b.x[0]+mx)-p.x)*2.2;
+    if(p.y>b.y[1]-my) acc.y-=(p.y-(b.y[1]-my))*3.0;
+    if(p.y<b.y[0]+my) acc.y+=((b.y[0]+my)-p.y)*3.0;
+    if(p.z>b.z[1]-mx) acc.z-=(p.z-(b.z[1]-mx))*2.2;
+    if(p.z<b.z[0]+mx) acc.z+=((b.z[0]+mx)-p.z)*2.2;
+    acc.clampLength(0,s.maxAcc);
+    v.addScaledVector(acc,dt);
+    let spd=v.length();
+    if(spd>s.speedMax){ v.multiplyScalar(s.speedMax/spd); spd=s.speedMax; }
+    else if(spd<s.speedMin&&spd>1e-5){ v.multiplyScalar(s.speedMin/spd); spd=s.speedMin; }
+    p.addScaledVector(v,dt);
+    p.x=clamp(p.x,b.x[0]-0.5,b.x[1]+0.5);
+    p.y=clamp(p.y,Math.max(0.6,b.y[0]-0.5),b.y[1]+0.5);
+    p.z=clamp(p.z,b.z[0]-0.5,b.z[1]+0.5);
+    _v2.copy(p).add(v);
+    _dummy.position.copy(p);
+    _dummy.lookAt(_v2);
+    const yaw=Math.atan2(v.x,v.z);
+    let dy=yaw-this.prevYaw;
+    dy=Math.atan2(Math.sin(dy),Math.cos(dy));
+    this.prevYaw=yaw;
+    const latAcc=acc.x*Math.cos(yaw)-acc.z*Math.sin(yaw);
+    const rollT=clamp(-latAcc*0.12,-0.5,0.5);
+    this.roll+=(rollT-this.roll)*Math.min(1,dt*4);
+    _dummy.rotateZ(this.roll);
+    this.mesh.quaternion.slerp(_dummy.quaternion, 1-Math.exp(-5*dt));
+    const sh=this.mesh.material.userData.shader;
+    if(sh){
+      sh.uniforms.uTime.value=t;
+      sh.uniforms.uSpeed.value=s.freq*(0.5+0.8*spd/s.speedMax);
+    }
+  }
+}
+
+for(const spec of SPECIES){
+  const geo=spec.geo();
+  for(let i=0;i<spec.count;i++){
+    const mesh=new THREE.Mesh(geo, fishMaterial(spec));
+    mesh.scale.setScalar(spec.scale);
+    mesh.castShadow=true;
+    mesh.userData.quoteType='fish';
+    scene.add(mesh);
+    fishes.push(new Fish(mesh,spec));
+  }
+}
+window.__AQUARIUM__.fishCount=fishes.length;
+window.__AQUARIUM__.speciesCount=SPECIES.length;
+
+/* ══════════════════════ 클릭 / 레이캐스트 ══════════════════════ */
+const raycaster=new THREE.Raycaster();
+const ndc=new THREE.Vector2();
+const clickables=[
+  ...rocks,
+  woodMesh,
+  ...(scene.children.filter(o=>o.isInstancedMesh&&o.userData.quoteType==='plant')),
+  ...fishes.map(f=>f.mesh),
+];
+
+function bubbleWorldAt(i,out,t){
+  const x=bubStart[i*3], y0=bubStart[i*3+1], z=bubStart[i*3+2];
+  const size=bubData[i*4], sp=bubData[i*4+1], ph=bubData[i*4+2], wa=bubData[i*4+3];
+  const y=((y0+sp*t)%BUB_H+BUB_H)%BUB_H;
+  out.set(
+    x+Math.sin(t*ph+ph)*wa,
+    y,
+    z+Math.cos(t*ph*0.77+ph*1.7)*wa*0.7
+  );
+  return out;
+}
+const _bv=new THREE.Vector3();
+function bubbleScreenHit(cx,cy,maxD){
+  let best=null, bestD=maxD;
+  for(let i=0;i<BN;i++){
+    bubbleWorldAt(i,_bv,tSim);
+    _bv.project(camera);
+    if(_bv.z>1||_bv.z<-1) continue;
+    const sx=(_bv.x*0.5+0.5)*innerWidth;
+    const sy=(-_bv.y*0.5+0.5)*innerHeight;
+    const d=Math.hypot(sx-cx,sy-cy);
+    if(d<bestD){ bestD=d; best=i; }
+  }
+  return best!==null?'bubble':null;
+}
+
+function showQuote(cat){
+  const list=QUOTES[cat];
+  if(!list) return;
+  let idx=Math.floor(Math.random()*list.length);
+  if(list.length>1&&idx===lastQuoteIdx[cat]) idx=(idx+1)%list.length;
+  lastQuoteIdx[cat]=idx;
+  const q=list[idx];
+  popupEl.querySelector('.quote-icon').textContent=q.icon;
+  popupEl.querySelector('.quote-text').textContent=q.text;
+  popupEl.querySelector('.quote-author').textContent=q.author;
+  popupEl.dataset.category=cat;
+  popupEl.dataset.state='visible';
+  clearTimeout(showQuote._t);
+  showQuote._t=setTimeout(()=>{ popupEl.dataset.state='hidden'; },4200);
+}
+
+function handleClick(cx,cy){
+  ndc.set((cx/innerWidth)*2-1, -(cy/innerHeight)*2+1);
+  raycaster.setFromCamera(ndc,camera);
+  const hits=raycaster.intersectObjects(clickables,true);
+  let type=null;
+  if(hits.length){
+    for(const h of hits){
+      let o=h.object;
+      while(o&&!o.userData.quoteType) o=o.parent;
+      if(o){ type=o.userData.quoteType; break; }
+    }
+  }
+  if(!type) type=bubbleScreenHit(cx,cy,34);
+  if(type) showQuote(type);
+  else popupEl.dataset.state='hidden';
+}
+
+let pd=null;
+renderer.domElement.addEventListener('pointerdown',(e)=>{ pd={x:e.clientX,y:e.clientY,t:performance.now(),id:e.pointerId}; });
+renderer.domElement.addEventListener('pointerup',(e)=>{
+  if(!pd||pd.id!==e.pointerId){ pd=null; return; }
+  const dx=e.clientX-pd.x, dy=e.clientY-pd.y, dt=performance.now()-pd.t;
+  pd=null;
+  if(Math.hypot(dx,dy)<8&&dt<700) handleClick(e.clientX,e.clientY);
+});
+renderer.domElement.addEventListener('pointercancel',()=>{ pd=null; });
+
+function getClickTargetsImpl(){
+  const res=[];
+  const add=(wp,cat)=>{
+    _v1.copy(wp).project(camera);
+    if(_v1.z<1&&_v1.z>-1){
+      res.push({
+        x:Math.round((_v1.x*0.5+0.5)*innerWidth),
+        y:Math.round((-_v1.y*0.5+0.5)*innerHeight),
+        category:cat,
+      });
+    }
+  };
+  const byKey=k=>fishes.filter(f=>f.spec.key===k);
+  const prefs=[byKey('angel'),byKey('cory'),byKey('guppy'),byKey('tetra')];
+  for(const group of prefs){
+    if(group[0]) add(group[0].pos,'fish');
+    if(res.filter(r=>r.category==='fish').length>=2) break;
+  }
+  for(const p of stemReps) add(p,'plant');
+  for(const p of redReps) add(p,'plant');
+  for(const p of carpetPos) add(p,'plant');
+  if(rocks[0]){ _v2.copy(rocks[0].position); _v2.y+=0.9; add(_v2,'rock'); }
+  add(WOOD_REP,'wood');
+  bubbleWorldAt(3,_bv,tSim);
+  add(_bv,'bubble');
+  return res;
+}
+
+/* ══════════════════════ 리사이즈 ══════════════════════ */
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+/* ══════════════════════ 메인 루프 ══════════════════════ */
+applyAngle();
+applyPreset('자연광');
+
+let last=performance.now();
+function loop(nowMs){
+  const now=nowMs*0.001;
+  let dt=now-last;
+  last=now;
+  if(dt>0.05) dt=0.05;   // 탭 전환 안전
+  if(dt<0) dt=0;
+  tSim+=dt;
+
+  controls.update();
+  for(const f of fishes) f.update(dt,tSim,fishes);
+  for(const u of swayUniforms) u.uTime.value=tSim;
+  cauUni.uTime.value=tSim;
+  waterUni.uT.value=tSim;
+  bubUni.uTime.value=tSim;
+  if(snowUniformRef) snowUniformRef.uTime.value=tSim;
+  beamMats.forEach((m,i)=>{ m.opacity=beamOp*(0.7+0.3*Math.sin(tSim*0.4+i*2.1)); });
+
+  renderer.render(scene,camera);
+
+  if(!READY){
+    READY=true;
+    window.__AQUARIUM__.ready=true;
+    loadingEl.dataset.state='hidden';
+  }
+}
+renderer.setAnimationLoop(loop);
+</script>
+</body>
+</html>
