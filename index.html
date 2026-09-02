@@ -223,6 +223,9 @@ td.model span{display:block;font-family:var(--f-body);font-weight:400;font-size:
 td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--stone)}
 td.mark{text-align:center}
 .yes{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--grass)}
+.b-one{color:var(--grass)}
+.b-iter{color:var(--umber)}
+.b-unk{color:var(--stone-dim)}
 .ok{color:var(--grass)}
 .part{color:var(--umber)}
 .miss{color:var(--rotala)}
@@ -398,6 +401,11 @@ td.mark{text-align:center}
           <p class="tail">인터랙티브하게 감상할 수 있는 Html 파일로 만들어주세요.</p>
 
           <p class="src">
+            <b style="color:var(--umber)">다만 아홉 개가 모두 이 프롬프트 한 번으로 나온 것은 아닙니다.</b>
+            01 과 02 는 몇 시간에 걸쳐 고쳐가며 만들었고, 02 는 도중에 다른 모델로 갈아타기도 했습니다.
+            어떤 조건에서 만들어졌는지는 비교표의 <b>제작 조건</b> 표에 정리해두었습니다.
+          </p>
+          <p class="src">
             원문은 <a href="https://github.com/outliner-coach/aquagarden_gemini_flash_3.5/blob/main/prompt.md" target="_blank" rel="noopener">prompt.md</a> 에 있습니다.
             회차마다 문장을 조금씩 다듬었고, 2026년 2월 3종 비교 때는 같은 사진을
             <code>@스크린샷 2026-02-22 오전 7.59.29.png</code> 로 첨부했습니다.
@@ -422,7 +430,8 @@ const VERSIONS = [
     slug:"gpt-canvas", name:"GPT-5", tool:"ChatGPT Canvas", date:"2025-08-09",
     repo:"https://github.com/outliner-coach/aquagarden",
     bytes:25009, lines:346, three:"0.161.0", cdn:"unpkg",
-    note:"가장 이른 버전이자 가장 작은 파일. 345줄 안에 보이드 군영과 코스틱까지 밀어 넣었고, 물고기도 53마리로 가장 많습니다. 다만 조명 조절 UI는 만들지 않았습니다.",
+    note:"가장 이른 버전이자 가장 작은 파일. 345줄 안에 보이드 군영과 코스틱까지 밀어 넣었고, 물고기도 53마리로 가장 많습니다. 다만 조명 조절 UI는 만들지 않았고, 한 번에 나온 결과가 아니라 SVG에서 3D로 갈아엎어 가며 v4까지 다듬은 결과입니다.",
+    build:{label:"반복 수정",tone:"iter",detail:"SVG 로 시작했다가 3D 로 갈아엎었고, 프롬프트를 여러 번 고쳐가며 v4 까지 갔습니다. 오류도 몇 차례 났습니다."},
     req:{sp:3,fish:53,light:0,quote:1},
     f:{shader:1,instancing:1,caustics:1,shadow:0,aces:1,fog:1,tube:1,boids:1}
   },
@@ -430,7 +439,8 @@ const VERSIONS = [
     slug:"gemini-3-antigravity", name:"Gemini 3", tool:"Antigravity", date:"2025-11-19",
     repo:"https://github.com/outliner-coach/aquascape",
     bytes:1430587, lines:0, three:"0.181.2", cdn:"번들", kind:"build",
-    note:"아홉 개 중 유일한 React 빌드입니다. Antigravity가 크롬에 익스텐션을 붙여 스크린샷을 찍어가며 만들었고, 완성까지 세 시간 가까이 걸렸습니다. 물고기마다 고유한 폐곡선을 도는 방식이라 무리 짓기는 없고, 클릭 명언은 빠졌습니다.",
+    note:"아홉 개 중 유일한 React 빌드입니다. Antigravity가 크롬에 익스텐션을 붙여 스크린샷을 찍어가며 세 시간 가까이 만들었고, 도중에 Gemini 과부하 오류로 Claude Sonnet 4.5 thinking으로 바꿔 이어서 작업했습니다. 순수 Gemini 3 결과물로 보기 어렵습니다. 물고기마다 고유한 폐곡선을 도는 방식이라 무리 짓기는 없고, 클릭 명언은 빠졌습니다.",
+    build:{label:"반복 수정",tone:"iter",detail:"세 시간 가까이 걸렸고, 도중에 Gemini 과부하 오류로 <b>Claude Sonnet 4.5 thinking 으로 바꿔 이어서</b> 작업했습니다. 순수 Gemini 3 결과물이 아닙니다."},
     req:{sp:4,fish:25,light:1,quote:0},
     f:{shader:1,instancing:0,caustics:1,shadow:1,aces:1,fog:1,tube:0,boids:0}
   },
@@ -439,6 +449,7 @@ const VERSIONS = [
     repo:"https://github.com/outliner-coach/aquagarden-bench/blob/main/versions/opus-4-6/index.html",
     bytes:48934, lines:1227, three:"0.160.0", cdn:"jsDelivr",
     note:"같은 날 3종 비교에서 제일 오래 걸렸지만 완성도가 가장 높았습니다. 같은 날 Antigravity 버전과 조명 패널의 DOM id 와 명언 문구까지 겹칩니다.",
+    build:{label:"원 프롬프트",tone:"one",detail:"같은 날 같은 프롬프트로 세 도구를 동시에 돌린 비교입니다. 셋 중 가장 오래 걸렸습니다."},
     req:{sp:5,fish:22,light:2,quote:1},
     f:{shader:0,instancing:0,caustics:0,shadow:1,aces:1,fog:1,tube:1,boids:0}
   },
@@ -447,6 +458,7 @@ const VERSIONS = [
     repo:"https://github.com/outliner-coach/aquagarden-bench/blob/main/versions/codex-5-3/index.html",
     bytes:41153, lines:1304, three:"0.161.0", cdn:"jsDelivr",
     note:"오브젝트 표현은 아쉬웠지만, 같은 날 비교에서 유일하게 화면 전환까지 구현했습니다.",
+    build:{label:"원 프롬프트",tone:"one",detail:"같은 날 3종 동시 비교."},
     req:{sp:3,fish:29,light:2,quote:1},
     f:{shader:0,instancing:1,caustics:0,shadow:0,aces:1,fog:1,tube:1,boids:0}
   },
@@ -455,6 +467,7 @@ const VERSIONS = [
     repo:"https://github.com/outliner-coach/aquagarden-bench/blob/main/versions/gemini-3-1-pro/index.html",
     bytes:39368, lines:1079, three:"0.128.0", cdn:"unpkg",
     note:"같은 날 비교에서 압도적으로 빨랐습니다. 석 달 전 Gemini 3가 세 시간 걸리던 작업을 한 번의 프롬프트로 10분 만에 끝냈습니다. Opus 4.6 버전과 조명 패널이 사실상 같습니다.",
+    build:{label:"원 프롬프트",tone:"one",detail:"같은 날 3종 동시 비교. 약 10분 만에 끝났습니다."},
     req:{sp:5,fish:19,light:2,quote:1},
     f:{shader:0,instancing:0,caustics:0,shadow:1,aces:1,fog:1,tube:0,boids:0}
   },
@@ -463,6 +476,7 @@ const VERSIONS = [
     repo:"https://github.com/outliner-coach/aquagarden_codex",
     bytes:100129, lines:3117, three:"0.161.0", cdn:"jsDelivr",
     note:"가장 큰 파일. 셰이더 주입 대신 지오메트리와 CPU 애니메이션으로 밀어붙였습니다. 리더를 뽑아 대형을 만들었다가 흩어지는 군영 상태 기계가 아홉 개 중 가장 정교합니다.",
+    build:{label:"반복 수정",tone:"iter",detail:"계획서와 진행 기록을 남기며 여러 커밋에 걸쳐 다듬었습니다."},
     req:{sp:3,fish:16,light:2,quote:1},
     f:{shader:0,instancing:1,caustics:0,shadow:0,aces:1,fog:1,tube:0,boids:1}
   },
@@ -471,6 +485,7 @@ const VERSIONS = [
     repo:"https://github.com/outliner-coach/aquagarden_gemini_flash_3.5",
     bytes:49785, lines:1067, three:"0.128.0", cdn:"jsDelivr · cdnjs",
     note:"출시 당일 테스트. 구형 three.js(0.128)에 고정되어 있고 커스텀 셰이더 없이 표준 머티리얼과 그림자로만 구성했습니다.",
+    build:{label:"확인 안 됨",tone:"unk",detail:"기록이 남아 있지 않습니다."},
     req:{sp:3,fish:10,light:2,quote:1},
     f:{shader:0,instancing:0,caustics:0,shadow:1,aces:0,fog:1,tube:0,boids:0}
   },
@@ -479,6 +494,7 @@ const VERSIONS = [
     repo:"https://github.com/outliner-coach/aquagarden_omo",
     bytes:48336, lines:1154, three:"0.185.1", cdn:"jsDelivr",
     note:"가장 최신 three.js를 쓰면서도 파일은 작은 편입니다. 물리 기반 조명과 코스틱을 함께 넣었습니다.",
+    build:{label:"확인 안 됨",tone:"unk",detail:"기록이 남아 있지 않습니다."},
     req:{sp:4,fish:18,light:2,quote:1},
     f:{shader:1,instancing:1,caustics:1,shadow:1,aces:1,fog:1,tube:1,boids:1}
   },
@@ -487,6 +503,7 @@ const VERSIONS = [
     repo:"https://github.com/outliner-coach/aquagarden-bench/blob/main/versions/claude-fable-5-1/index.html",
     bytes:102423, lines:2302, three:"0.170.0", cdn:"jsDelivr",
     note:"참고 사진의 배치를 3D로 옮기는 데 집중했습니다. 5종 20마리가 종별 수심대를 지키며 유영하고, 네온테트라만 결속·정렬·분리 규칙으로 무리를 짓습니다.",
+    build:{label:"원 프롬프트 + 보완 1회",tone:"one",detail:"원 프롬프트로 만든 뒤, 참고 사진과 대조해 하드스케이프와 수초를 한 차례 다듬었습니다."},
     req:{sp:5,fish:20,light:2,quote:1},
     f:{shader:1,instancing:1,caustics:1,shadow:1,aces:1,fog:1,tube:1,boids:1}
   }
@@ -561,7 +578,8 @@ function select(slug){
     c.setAttribute("aria-current", String(c.dataset.slug === v.slug)));
 
   nowName.textContent = v.name;
-  nowMeta.textContent = ko(v.date) + "  ·  three " + v.three + (v.bytes ? "  ·  " + kb(v.bytes) : "");
+  nowMeta.innerHTML = ko(v.date) + "  ·  three " + v.three + (v.bytes ? "  ·  " + kb(v.bytes) : "") +
+    '  ·  <span class="b-' + v.build.tone + '">' + v.build.label + '</span>';
   const url = "versions/" + v.slug + "/index.html";
   btnOpen.href = url;
   btnSrc.href = v.repo;
@@ -621,6 +639,18 @@ const cmp = document.getElementById("paneCmp");
 const LIGHT_LABEL = ["없음", "밝기 하나", "있음"];
 
 cmp.innerHTML =
+  '<h2>제작 조건</h2>' +
+  '<p class="sub">아래 표들을 읽기 전에 봐야 할 전제입니다. 아홉 개가 모두 같은 조건에서 만들어지지는 않았습니다. 한 번의 프롬프트로 끝난 것과, 몇 시간에 걸쳐 고쳐가며 만든 것을 나란히 놓고 우열을 가릴 수는 없습니다.</p>' +
+  '<div class="twrap"><table><thead><tr>' +
+    '<th>모델</th><th>제작 방식</th><th style="white-space:normal">비고</th>' +
+  '</tr></thead><tbody>' +
+  VERSIONS.map(v =>
+    '<tr><td class="model">' + v.name + '<span>' + v.tool + '</span></td>' +
+    '<td class="num"><span class="b-' + v.build.tone + '">' + v.build.label + '</span></td>' +
+    '<td style="white-space:normal;color:var(--stone)">' + v.build.detail + '</td></tr>'
+  ).join("") +
+  '</tbody></table></div>' +
+
   '<h2>요구사항</h2>' +
   '<p class="sub">프롬프트가 명시적으로 요구한 세 가지를 실제로 구현했는지 확인한 결과입니다. 물고기 수는 생성 코드에서 세었고, 조명과 명언은 코드와 브라우저에서 각각 확인했습니다.</p>' +
   '<div class="twrap"><table><thead><tr>' +
