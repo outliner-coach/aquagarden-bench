@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AquaGarden Bench</title>
-<meta name="description" content="같은 프롬프트로 다섯 개의 AI 모델이 만든 브라우저 3D 수족관을 나란히 실행하고 비교합니다.">
+<meta name="description" content="같은 프롬프트와 사진 한 장으로 아홉 번에 걸쳐 만든 브라우저 3D 수족관을 나란히 실행하고 비교합니다.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -306,7 +306,7 @@ td.mark{text-align:center}
   <header class="head">
     <div class="brand">
       <h1>AquaGarden <em>Bench</em></h1>
-      <p>같은 프롬프트, 다섯 개의 모델. 브라우저만으로 도는 3D 수족관.</p>
+      <p>같은 프롬프트, 아홉 번의 시도. 브라우저만으로 도는 3D 수족관.</p>
     </div>
     <p class="tally"><b id="tallyN">5</b> builds &nbsp;·&nbsp; <b id="tallySpan">13</b> months &nbsp;·&nbsp; <b>1</b> prompt</p>
     <div class="seg" role="tablist" aria-label="보기 전환">
@@ -340,7 +340,10 @@ td.mark{text-align:center}
         </span>
       </div>
       <div class="tank" id="tank">
-        <div class="loading" id="loading"><span class="drop"></span><span>수조를 채우는 중</span></div>
+        <div class="loading" id="loading">
+          <span class="drop"></span>
+          <span id="loadingMsg">수조를 채우는 중</span>
+        </div>
         <iframe id="frame" title="선택한 버전의 3D 수족관" allow="autoplay; fullscreen"></iframe>
       </div>
     </section>
@@ -497,7 +500,9 @@ const nowMeta = document.getElementById("nowMeta");
 const btnOpen = document.getElementById("btnOpen");
 const btnSrc = document.getElementById("btnSrc");
 
-const kb = n => n >= 1000 ? Math.round(n/1024) + " KB" : n + " B";
+const kb = n => n >= 1024*1024 ? (n/1024/1024).toFixed(1) + " MB"
+               : n >= 1000     ? Math.round(n/1024) + " KB"
+                               : n + " B";
 const ko = d => d.slice(0,4) + "." + d.slice(5,7) + "." + d.slice(8,10);
 
 VERSIONS.forEach((v, i) => {
@@ -549,6 +554,8 @@ function select(slug){
   btnOpen.href = url;
   btnSrc.href = v.repo;
 
+  document.getElementById("loadingMsg").textContent =
+    v.kind === "build" ? "React 번들을 여는 중 · 첫 렌더까지 잠시 걸립니다" : "수조를 채우는 중";
   loading.hidden = false;
   frame.src = url;
 
@@ -557,9 +564,29 @@ function select(slug){
   }
 }
 
-frame.addEventListener("load", () => { loading.hidden = true; });
+let sceneWatch = 0;
+function waitForScene(){
+  clearInterval(sceneWatch);
+  const started = Date.now();
+  sceneWatch = setInterval(() => {
+    let painted = false;
+    try {
+      const c = frame.contentDocument && frame.contentDocument.querySelector("canvas");
+      painted = !!(c && c.clientWidth > 0 && c.clientHeight > 0);
+    } catch (e) {
+      painted = true;            /* cross-origin: nothing to wait on */
+    }
+    /* give the scene two frames past canvas creation, then reveal */
+    if (painted || Date.now() - started > 25000) {
+      clearInterval(sceneWatch);
+      requestAnimationFrame(() => requestAnimationFrame(() => { loading.hidden = true; }));
+    }
+  }, 250);
+}
+frame.addEventListener("load", waitForScene);
 document.getElementById("btnReload").addEventListener("click", () => {
   loading.hidden = false;
+  waitForScene();
   try { frame.contentWindow.location.reload(); }
   catch (e) { frame.src = frame.src; }   /* cross-origin or not yet loaded */
 });
