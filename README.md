@@ -9,7 +9,9 @@
 
 ## 공통 요구사항
 
-다섯 버전 모두 아래 하나의 프롬프트에서 나왔습니다.
+다섯 버전 모두 같은 프롬프트와 같은 참고 사진 한 장에서 나왔습니다.
+갤러리의 **프롬프트** 탭에서 원문과 이미지를 나란히 볼 수 있고,
+원문 파일은 [prompt.md](https://github.com/outliner-coach/aquagarden_gemini_flash_3.5/blob/main/prompt.md) 에 있습니다.
 
 > 브라우저만으로 실행 가능한 3D 디지털 수족관을 만들어줘.
 >
@@ -31,7 +33,7 @@
 | 01 | GPT-5 | ChatGPT Canvas | 2025-08-09 | 24 KB · 345줄 | 0.161.0 | [aquagarden](https://github.com/outliner-coach/aquagarden) |
 | 02 | Codex | OpenAI Codex CLI | 2026-03-05 | 98 KB · 3,116줄 | 0.161.0 | [aquagarden_codex](https://github.com/outliner-coach/aquagarden_codex) |
 | 03 | Gemini Flash 3.5 | 단일 파일 프로토타입 | 2026-05-20 | 49 KB · 1,066줄 | 0.128.0 | [aquagarden_gemini_flash_3.5](https://github.com/outliner-coach/aquagarden_gemini_flash_3.5) |
-| 04 | OpenCode | 오픈코드 에이전트 | 2026-08-23 | 47 KB · 1,153줄 | 0.185.1 | [aquagarden_omo](https://github.com/outliner-coach/aquagarden_omo) |
+| 04 | ox Alpha - GLM 5.3 | OpenCode | 2026-08-23 | 47 KB · 1,153줄 | 0.185.1 | [aquagarden_omo](https://github.com/outliner-coach/aquagarden_omo) |
 | 05 | Claude Fable 5.1 | Claude Code | 2026-09-02 | 100 KB · 2,301줄 | 0.170.0 | 이 저장소 |
 
 각 파일은 원본 저장소에서 **수정 없이 그대로** 복사했습니다.
@@ -44,11 +46,12 @@
 ## 구조
 
 ```
-index.html                              갤러리 (모델 선택 + 비교표)
+index.html                              갤러리 (수조 · 비교표 · 프롬프트)
+assets/reference.jpg                    다섯 버전이 공유한 참고 이미지
 versions/gpt-canvas/index.html          01
 versions/codex/index.html               02
 versions/gemini-flash-3-5/index.html    03
-versions/opencode/index.html            04
+versions/glm-5-3/index.html             04
 versions/claude-fable-5-1/index.html    05
 ```
 

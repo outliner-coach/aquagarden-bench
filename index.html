@@ -228,6 +228,75 @@ td.mark{text-align:center}
 .bar-cell .track{width:5.5rem;height:4px;border-radius:2px;background:var(--glass);overflow:hidden;flex:none}
 .bar-cell .fill{display:block;height:100%;border-radius:2px;background:var(--umber)}
 .compare tr:hover .fill{background:var(--grass-dim)}
+
+/* ── brief (the shared prompt + reference photo) ─────── */
+.brief{overflow:auto;padding:var(--pad)}
+.brief-grid{
+  display:grid;gap:clamp(1.25rem,3vw,2.5rem);
+  grid-template-columns:minmax(0,22rem) minmax(0,34rem);
+  align-items:start;
+}
+@media (max-width:1100px){ .brief-grid{grid-template-columns:minmax(0,34rem)} }
+
+.ref{margin:0;position:sticky;top:0}
+@media (max-width:1100px){ .ref{position:static} }
+.ref a{display:block;border:1px solid var(--glass-2);border-radius:var(--r);overflow:hidden;background:#000}
+.ref a:hover{border-color:var(--grass-dim)}
+.ref img{display:block;width:100%;height:auto}
+.ref figcaption{
+  margin-top:.55rem;font-family:var(--f-mono);font-size:.68rem;
+  color:var(--stone-dim);line-height:1.5;
+}
+
+.prompt{
+  border:1px solid var(--glass);border-left:2px solid var(--grass);
+  border-radius:var(--r);padding:clamp(1.1rem,2.4vw,1.75rem);
+  background:var(--soil-2);
+}
+.prompt .lead{
+  margin:0 0 1.4rem;font-family:var(--f-disp);font-optical-sizing:auto;
+  font-weight:600;font-size:1.12rem;line-height:1.45;letter-spacing:-.01em;
+  text-wrap:balance;
+}
+.prompt h3{
+  margin:1.5rem 0 .5rem;font-family:var(--f-mono);font-size:.68rem;font-weight:500;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--grass);
+}
+.prompt h3::before{content:"[";opacity:.5;margin-right:.1em}
+.prompt h3::after{content:"]";opacity:.5;margin-left:.1em}
+.prompt ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.3rem}
+.prompt li{position:relative;padding-left:1rem;color:var(--frost);font-size:.9rem}
+.prompt li::before{
+  content:"–";position:absolute;left:0;color:var(--stone-dim);
+}
+.prompt code{
+  font-family:var(--f-mono);font-size:.8em;color:var(--stone);
+  border:1px solid var(--glass);border-radius:3px;padding:0 .3em;
+}
+.prompt blockquote{
+  margin:1.1rem 0 0;padding:.85rem 1rem;
+  border:1px solid var(--glass);border-left:2px solid var(--rotala);
+  border-radius:0 var(--r) var(--r) 0;background:var(--soil);
+  font-size:.87rem;line-height:1.6;color:var(--frost);
+}
+.prompt blockquote cite{
+  display:block;margin-top:.4rem;font-style:normal;
+  font-family:var(--f-mono);font-size:.7rem;color:var(--rotala);
+}
+.prompt blockquote cite::before{content:"— "}
+.prompt blockquote .why{
+  display:block;margin-top:.6rem;padding-top:.6rem;
+  border-top:1px solid var(--glass);
+  font-size:.76rem;color:var(--stone-dim);
+}
+.prompt .tail{
+  margin:1.5rem 0 0;padding-top:1.1rem;border-top:1px solid var(--glass);
+  font-size:.9rem;color:var(--frost);
+}
+.prompt .src{margin:.9rem 0 0;font-size:.76rem;color:var(--stone-dim);line-height:1.6}
+.prompt .src a{color:var(--stone);text-underline-offset:3px}
+.prompt .src a:hover{color:var(--grass)}
+
 </style>
 </head>
 <body>
@@ -242,6 +311,7 @@ td.mark{text-align:center}
     <div class="seg" role="tablist" aria-label="보기 전환">
       <button role="tab" id="tabTank" aria-selected="true" aria-controls="paneTank">수조</button>
       <button role="tab" id="tabCmp" aria-selected="false" aria-controls="paneCmp">비교표</button>
+      <button role="tab" id="tabBrief" aria-selected="false" aria-controls="paneBrief">프롬프트</button>
     </div>
   </header>
 
@@ -275,6 +345,59 @@ td.mark{text-align:center}
     </section>
 
     <section class="compare" id="paneCmp" role="tabpanel" aria-labelledby="tabCmp" hidden></section>
+
+    <section class="brief" id="paneBrief" role="tabpanel" aria-labelledby="tabBrief" hidden>
+      <div class="brief-grid">
+
+        <figure class="ref">
+          <a href="assets/reference.jpg" target="_blank" rel="noopener" title="원본 크기로 열기">
+            <img src="assets/reference.jpg" width="441" height="261" loading="lazy"
+                 alt="참고한 실제 수조 사진. 왼쪽에 이끼 낀 유목과 녹색 수초, 가운데에 회백색 바위 더미, 오른쪽에 붉은 수초와 빨간 베타, 앞쪽 바닥에는 어두운 소일이 깔려 있습니다.">
+          </a>
+          <figcaption>참고 이미지 · 441 × 261 · 다섯 버전이 모두 이 사진 한 장을 받았습니다</figcaption>
+        </figure>
+
+        <div class="prompt">
+          <p class="lead">브라우저만으로 실행 가능한 3D 디지털 수족관을 만들어주세요.</p>
+
+          <h3>배경</h3>
+          <ul>
+            <li>수초와 유목, 바위들로 이루어져 있다.</li>
+            <li>첨부한 이미지를 참고하여 디자인한다. <code>@sample.png</code></li>
+            <li>3d로 구현한다.</li>
+            <li>수초는 자연스럽게 흔들린다.</li>
+            <li>공기 기포가 자연스럽게 올라온다.</li>
+          </ul>
+
+          <h3>물고기</h3>
+          <ul>
+            <li>물고기들은 3종류 이상</li>
+            <li>물고기들은 자유롭게 유영하며 수족관을 돌아다닌다</li>
+            <li>물고기들은 지느러미와 꼬리가 자연스럽게 움직인다</li>
+          </ul>
+
+          <h3>기능</h3>
+          <ul>
+            <li>사용자는 조명을 조절할 수 있다.</li>
+            <li>오브젝트들을 클릭하면 각 오브제와 관련된 명언이 나온다.</li>
+          </ul>
+
+          <blockquote>
+            많은 사람들이 평생을 낚시를 하면서도, 그들이 추구하는 것이 물고기가 아니라는 것을 깨닫지 못한다.
+            <cite>헨리 데이비드 소로우</cite>
+            <span class="why">프롬프트에 예시로 적힌 이 한 문장에서 다섯 버전의 명언 기능이 나왔습니다.</span>
+          </blockquote>
+
+          <p class="tail">인터랙티브하게 감상할 수 있는 Html 파일로 만들어주세요.</p>
+
+          <p class="src">
+            원문은 <a href="https://github.com/outliner-coach/aquagarden_gemini_flash_3.5/blob/main/prompt.md" target="_blank" rel="noopener">prompt.md</a> 에 있습니다.
+            버전마다 문장을 조금씩 다듬었지만 요구사항은 그대로 유지했습니다.
+          </p>
+        </div>
+
+      </div>
+    </section>
   </div>
 </div>
 
@@ -308,7 +431,7 @@ const VERSIONS = [
     f:{shader:0,instancing:0,caustics:0,shadow:1,aces:0,fog:1,tube:0,boids:0}
   },
   {
-    slug:"opencode", name:"OpenCode", tool:"오픈코드 에이전트", date:"2026-08-23",
+    slug:"glm-5-3", name:"ox Alpha - GLM 5.3", tool:"OpenCode", date:"2026-08-23",
     repo:"https://github.com/outliner-coach/aquagarden_omo",
     bytes:48336, lines:1153, three:"0.185.1", cdn:"jsDelivr",
     note:"가장 최신 three.js를 쓰면서도 파일은 작은 편. 물리 기반 조명과 코스틱을 함께 넣었습니다.",
@@ -377,7 +500,11 @@ VERSIONS.forEach((v, i) => {
 /* ── selection ──────────────────────────────────────── */
 let current = null;
 
+/* slugs that were published before a version was renamed */
+const ALIAS = { opencode: "glm-5-3" };
+
 function select(slug){
+  slug = ALIAS[slug] || slug;
   const v = VERSIONS.find(x => x.slug === slug) || VERSIONS[VERSIONS.length-1];
   current = v;
 
@@ -464,19 +591,22 @@ cmp.innerHTML =
   '<p class="note">모든 버전은 동일한 요구사항 하나로 만들어졌습니다 — 수초와 유목과 바위로 꾸민 3D 수조, 흔들리는 수초와 올라오는 기포, 3종 이상의 자유 유영 물고기, 조절 가능한 조명, 오브젝트를 클릭하면 나오는 명언.</p>';
 
 /* ── tabs ───────────────────────────────────────────── */
-const tabTank = document.getElementById("tabTank");
-const tabCmp = document.getElementById("tabCmp");
-const paneTank = document.getElementById("paneTank");
+const TABS = {
+  tank:  ["tabTank",  "paneTank"],
+  cmp:   ["tabCmp",   "paneCmp"],
+  brief: ["tabBrief", "paneBrief"]
+};
 
 function showTab(which){
-  const tank = which === "tank";
-  tabTank.setAttribute("aria-selected", String(tank));
-  tabCmp.setAttribute("aria-selected", String(!tank));
-  paneTank.hidden = !tank;
-  cmp.hidden = tank;
+  for (const [key, [tabId, paneId]] of Object.entries(TABS)) {
+    const on = key === which;
+    document.getElementById(tabId).setAttribute("aria-selected", String(on));
+    document.getElementById(paneId).hidden = !on;
+  }
 }
-tabTank.addEventListener("click", () => showTab("tank"));
-tabCmp.addEventListener("click", () => showTab("cmp"));
+for (const [key, [tabId]] of Object.entries(TABS)) {
+  document.getElementById(tabId).addEventListener("click", () => showTab(key));
+}
 
 /* ── boot ───────────────────────────────────────────── */
 select(location.hash.slice(1) || VERSIONS[VERSIONS.length-1].slug);
