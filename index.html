@@ -157,6 +157,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
   border:1px solid var(--glass);border-radius:4px;padding:.05rem .35rem;
   white-space:nowrap;
 }
+.chip-alt{color:var(--umber);border-color:var(--umber)}
 
 /* ── stage ───────────────────────────────────────────── */
 .stage{display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0;background:var(--soil)}
@@ -351,10 +352,10 @@ td.mark{text-align:center}
 
         <figure class="ref">
           <a href="assets/reference.jpg" target="_blank" rel="noopener" title="원본 크기로 열기">
-            <img src="assets/reference.jpg" width="441" height="261" loading="lazy"
+            <img src="assets/reference.jpg" width="441" height="261" loading="eager" decoding="async"
                  alt="참고한 실제 수조 사진. 왼쪽에 이끼 낀 유목과 녹색 수초, 가운데에 회백색 바위 더미, 오른쪽에 붉은 수초와 빨간 베타, 앞쪽 바닥에는 어두운 소일이 깔려 있습니다.">
           </a>
-          <figcaption>참고 이미지 · 441 × 261 · 다섯 버전이 모두 이 사진 한 장을 받았습니다</figcaption>
+          <figcaption>참고 이미지 · 441 × 261 · 아홉 버전 모두 이 수조 사진 한 장을 기준으로 만들어졌습니다</figcaption>
         </figure>
 
         <div class="prompt">
@@ -392,7 +393,9 @@ td.mark{text-align:center}
 
           <p class="src">
             원문은 <a href="https://github.com/outliner-coach/aquagarden_gemini_flash_3.5/blob/main/prompt.md" target="_blank" rel="noopener">prompt.md</a> 에 있습니다.
-            버전마다 문장을 조금씩 다듬었지만 요구사항은 그대로 유지했습니다.
+            회차마다 문장을 조금씩 다듬었고, 2026년 2월 3종 비교 때는 같은 사진을
+            <code>@스크린샷 2026-02-22 오전 7.59.29.png</code> 로 첨부했습니다.
+            표현은 달라도 요구사항 자체는 아홉 버전 내내 그대로였습니다.
           </p>
         </div>
 
@@ -412,36 +415,64 @@ const VERSIONS = [
   {
     slug:"gpt-canvas", name:"GPT-5", tool:"ChatGPT Canvas", date:"2025-08-09",
     repo:"https://github.com/outliner-coach/aquagarden",
-    bytes:25009, lines:345, three:"0.161.0", cdn:"unpkg",
-    note:"가장 이른 버전이자 가장 작은 파일. 보이드 군영과 코스틱을 최소 코드로 구현했습니다.",
+    bytes:25009, lines:346, three:"0.161.0", cdn:"unpkg",
+    note:"가장 이른 버전이자 가장 작은 파일. 345줄 안에 군영과 코스틱까지 밀어 넣었습니다.",
     f:{shader:1,instancing:1,caustics:1,shadow:0,aces:1,fog:1,tube:1,boids:1}
+  },
+  {
+    slug:"gemini-3-antigravity", name:"Gemini 3", tool:"Antigravity", date:"2025-11-19",
+    repo:"https://github.com/outliner-coach/aquascape",
+    bytes:1430587, lines:0, three:"0.181.2", cdn:"번들", kind:"build",
+    note:"아홉 개 중 유일한 React 빌드입니다. Antigravity가 크롬에 익스텐션을 붙여 스크린샷을 찍어가며 만들었고, 완성까지 세 시간 가까이 걸렸습니다.",
+    f:{shader:1,instancing:1,caustics:1,shadow:1,aces:1,fog:1,tube:1,boids:0}
+  },
+  {
+    slug:"opus-4-6", name:"Opus 4.6", tool:"Claude Code", date:"2026-02-22",
+    repo:"https://github.com/outliner-coach/aquagarden-bench/blob/main/versions/opus-4-6/index.html",
+    bytes:48934, lines:1227, three:"0.160.0", cdn:"jsDelivr",
+    note:"같은 날 3종 비교에서 제일 오래 걸렸지만 완성도가 가장 높았습니다. Antigravity 버전과 기능 패널 구조가 거의 같게 나온 점이 특이합니다.",
+    f:{shader:0,instancing:0,caustics:0,shadow:1,aces:1,fog:1,tube:1,boids:0}
+  },
+  {
+    slug:"codex-5-3", name:"Codex 5.3 exhigh", tool:"Codex", date:"2026-02-22",
+    repo:"https://github.com/outliner-coach/aquagarden-bench/blob/main/versions/codex-5-3/index.html",
+    bytes:41153, lines:1304, three:"0.161.0", cdn:"jsDelivr",
+    note:"오브젝트 표현은 아쉬웠지만, 같은 날 비교에서 유일하게 화면 전환까지 구현했습니다.",
+    f:{shader:0,instancing:1,caustics:0,shadow:0,aces:1,fog:1,tube:1,boids:0}
+  },
+  {
+    slug:"gemini-3-1-pro", name:"Gemini 3.1 Pro", tool:"Antigravity", date:"2026-02-22",
+    repo:"https://github.com/outliner-coach/aquagarden-bench/blob/main/versions/gemini-3-1-pro/index.html",
+    bytes:39368, lines:1079, three:"0.128.0", cdn:"unpkg",
+    note:"같은 날 비교에서 압도적으로 빨랐습니다. 석 달 전 Gemini 3가 세 시간 걸리던 작업을 한 번의 프롬프트로 10분 만에 끝냈습니다.",
+    f:{shader:0,instancing:0,caustics:1,shadow:1,aces:1,fog:1,tube:0,boids:0}
   },
   {
     slug:"codex", name:"Codex", tool:"OpenAI Codex CLI", date:"2026-03-05",
     repo:"https://github.com/outliner-coach/aquagarden_codex",
-    bytes:100129, lines:3116, three:"0.161.0", cdn:"jsDelivr",
-    note:"가장 큰 파일. 셰이더 주입 대신 지오메트리와 CPU 애니메이션으로 밀어붙인 접근입니다.",
-    f:{shader:0,instancing:1,caustics:0,shadow:0,aces:1,fog:1,tube:0,boids:0}
+    bytes:100129, lines:3117, three:"0.161.0", cdn:"jsDelivr",
+    note:"가장 큰 파일. 셰이더 주입 대신 지오메트리와 CPU 애니메이션으로 밀어붙였고, 계획과 진행 문서를 남기며 작업했습니다.",
+    f:{shader:0,instancing:1,caustics:0,shadow:0,aces:1,fog:1,tube:0,boids:1}
   },
   {
     slug:"gemini-flash-3-5", name:"Gemini Flash 3.5", tool:"단일 파일 프로토타입", date:"2026-05-20",
     repo:"https://github.com/outliner-coach/aquagarden_gemini_flash_3.5",
-    bytes:49785, lines:1066, three:"0.128.0", cdn:"jsDelivr · cdnjs",
-    note:"유일하게 구형 three.js(0.128)에 고정. 커스텀 셰이더 없이 표준 머티리얼과 그림자로 구성했습니다.",
+    bytes:49785, lines:1067, three:"0.128.0", cdn:"jsDelivr · cdnjs",
+    note:"출시 당일 테스트. 구형 three.js(0.128)에 고정되어 있고 커스텀 셰이더 없이 표준 머티리얼과 그림자로만 구성했습니다.",
     f:{shader:0,instancing:0,caustics:0,shadow:1,aces:0,fog:1,tube:0,boids:0}
   },
   {
     slug:"glm-5-3", name:"ox Alpha - GLM 5.3", tool:"OpenCode", date:"2026-08-23",
     repo:"https://github.com/outliner-coach/aquagarden_omo",
-    bytes:48336, lines:1153, three:"0.185.1", cdn:"jsDelivr",
-    note:"가장 최신 three.js를 쓰면서도 파일은 작은 편. 물리 기반 조명과 코스틱을 함께 넣었습니다.",
-    f:{shader:1,instancing:1,caustics:1,shadow:1,aces:1,fog:1,tube:1,boids:0}
+    bytes:48336, lines:1154, three:"0.185.1", cdn:"jsDelivr",
+    note:"가장 최신 three.js를 쓰면서도 파일은 작은 편입니다. 물리 기반 조명과 코스틱을 함께 넣었습니다.",
+    f:{shader:1,instancing:1,caustics:1,shadow:1,aces:1,fog:1,tube:1,boids:1}
   },
   {
     slug:"claude-fable-5-1", name:"Claude Fable 5.1", tool:"Claude Code", date:"2026-09-02",
     repo:"https://github.com/outliner-coach/aquagarden-bench/blob/main/versions/claude-fable-5-1/index.html",
-    bytes:102423, lines:2301, three:"0.170.0", cdn:"jsDelivr",
-    note:"참고 사진의 배치를 3D로 옮기는 데 집중했습니다. 5종 20마리의 물고기가 종별 수심대를 지킵니다.",
+    bytes:102423, lines:2302, three:"0.170.0", cdn:"jsDelivr",
+    note:"참고 사진의 배치를 3D로 옮기는 데 집중했습니다. 5종 20마리가 종별 수심대를 지키며 유영하고, 네온테트라만 결속·정렬·분리 규칙으로 무리를 짓습니다.",
     f:{shader:1,instancing:1,caustics:1,shadow:1,aces:1,fog:1,tube:1,boids:1}
   }
 ];
@@ -482,7 +513,8 @@ VERSIONS.forEach((v, i) => {
     '<span class="tool">' + v.tool + '</span>' +
     '<span class="chips">' +
       (v.bytes ? '<span class="chip">' + kb(v.bytes) + '</span>' : '') +
-      (v.lines ? '<span class="chip">' + v.lines.toLocaleString() + '줄</span>' : '') +
+      (v.lines ? '<span class="chip">' + v.lines.toLocaleString() + '줄</span>'
+                : '<span class="chip chip-alt">React 빌드</span>') +
       '<span class="chip">three ' + v.three + '</span>' +
     '</span>';
   b.addEventListener("click", () => select(v.slug));
@@ -558,8 +590,8 @@ cmp.innerHTML =
     '<td class="num">' + ko(v.date) + '</td>' +
     '<td class="num"><span class="bar-cell"><span class="track"><span class="fill" style="width:' +
       (v.bytes ? Math.round(v.bytes / maxBytes * 100) : 0) + '%"></span></span>' +
-      (v.bytes ? kb(v.bytes) : "—") + '</span></td>' +
-    '<td class="num">' + (v.lines ? v.lines.toLocaleString() : "—") + '</td>' +
+      (v.bytes ? kb(v.bytes) + (v.kind === "build" ? " *" : "") : "—") + '</span></td>' +
+    '<td class="num">' + (v.lines ? v.lines.toLocaleString() : "번들") + '</td>' +
     '<td class="num">' + v.three + '</td>' +
     '<td class="num">' + v.cdn + '</td></tr>'
   ).join("") +
@@ -588,6 +620,7 @@ cmp.innerHTML =
     '<td style="white-space:normal;color:var(--stone)">' + v.note + '</td></tr>'
   ).join("") +
   '</tbody></table></div>' +
+  '<p class="note">* Gemini 3 / Antigravity 버전만 단일 HTML 이 아니라 React 빌드라, 크기는 번들 전체(JS · CSS · HTML)를 합한 값입니다. 나머지 여덟 개는 HTML 파일 하나의 크기입니다.</p>' +
   '<p class="note">모든 버전은 동일한 요구사항 하나로 만들어졌습니다 — 수초와 유목과 바위로 꾸민 3D 수조, 흔들리는 수초와 올라오는 기포, 3종 이상의 자유 유영 물고기, 조절 가능한 조명, 오브젝트를 클릭하면 나오는 명언.</p>';
 
 /* ── tabs ───────────────────────────────────────────── */

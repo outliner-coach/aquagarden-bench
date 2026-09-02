@@ -1,0 +1,1303 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D 디지털 수족관</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Nanum+Myeongjo:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-deep: #05141a;
+      --bg-surface: #0a242d;
+      --panel: rgba(8, 33, 39, 0.72);
+      --panel-border: rgba(162, 221, 208, 0.28);
+      --text-main: #e2f2ef;
+      --text-sub: #acd0c8;
+      --accent: #9fe8c8;
+      --accent-2: #ffd18a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 12% 18%, rgba(32, 91, 96, 0.28), transparent 34%),
+        radial-gradient(circle at 84% 16%, rgba(18, 55, 66, 0.48), transparent 46%),
+        linear-gradient(170deg, var(--bg-surface), var(--bg-deep));
+      color: var(--text-main);
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+
+    #app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #viewport {
+      width: 100%;
+      height: 100%;
+    }
+
+    #hud {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      right: 18px;
+      display: flex;
+      gap: 14px;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .panel {
+      pointer-events: auto;
+      border: 1px solid var(--panel-border);
+      background: var(--panel);
+      backdrop-filter: blur(7px);
+      -webkit-backdrop-filter: blur(7px);
+      border-radius: 14px;
+      box-shadow: 0 14px 26px rgba(0, 0, 0, 0.35);
+    }
+
+    #controls {
+      width: min(380px, 100%);
+      padding: 14px 16px;
+    }
+
+    #controls h1 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      letter-spacing: 0.03em;
+      color: #d6f4e5;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0;
+      color: var(--text-sub);
+      font-size: 0.9rem;
+    }
+
+    .row input[type='range'] {
+      grid-column: 1 / -1;
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .value {
+      color: var(--accent-2);
+      font-variant-numeric: tabular-nums;
+    }
+
+    #quoteBox {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      padding: 14px 16px;
+      max-width: 940px;
+      margin: 0 auto;
+      border: 1px solid var(--panel-border);
+      background: rgba(7, 20, 24, 0.74);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 14px;
+      pointer-events: none;
+    }
+
+    #quoteLabel {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+
+    #quoteText {
+      margin: 0;
+      font-family: 'Nanum Myeongjo', serif;
+      line-height: 1.55;
+      color: #edf9f6;
+      font-size: clamp(0.96rem, 2vw, 1.1rem);
+    }
+
+    #hint {
+      margin-top: 9px;
+      color: var(--text-sub);
+      font-size: 0.78rem;
+      opacity: 0.85;
+    }
+
+    @media (max-width: 760px) {
+      #hud {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      #controls {
+        width: 100%;
+      }
+
+      #quoteBox {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="viewport"></div>
+
+    <div id="hud">
+      <section id="controls" class="panel">
+        <h1>조명 제어</h1>
+        <label class="row" for="intensity">
+          밝기
+          <span id="intensityValue" class="value">1.55</span>
+          <input id="intensity" type="range" min="0.35" max="2.4" step="0.01" value="1.55" />
+        </label>
+        <label class="row" for="warmth">
+          색온도
+          <span id="warmthValue" class="value">7000K</span>
+          <input id="warmth" type="range" min="2600" max="11000" step="50" value="7000" />
+        </label>
+      </section>
+    </div>
+
+    <aside id="quoteBox">
+      <div id="quoteLabel">오브젝트 명언</div>
+      <p id="quoteText">수족관 속 오브젝트를 클릭하면 관련된 명언이 표시됩니다.</p>
+      <div id="hint">팁: 드래그로 시점을 회전하고, 휠로 확대/축소할 수 있습니다.</div>
+    </aside>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    const viewport = document.getElementById('viewport');
+    const quoteLabel = document.getElementById('quoteLabel');
+    const quoteText = document.getElementById('quoteText');
+    const intensityInput = document.getElementById('intensity');
+    const warmthInput = document.getElementById('warmth');
+    const intensityValue = document.getElementById('intensityValue');
+    const warmthValue = document.getElementById('warmthValue');
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x071318);
+    scene.fog = new THREE.FogExp2(0x071318, 0.032);
+
+    const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 120);
+    camera.position.set(0, 4.5, 16.5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.03;
+    viewport.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.045;
+    controls.minDistance = 9;
+    controls.maxDistance = 28;
+    controls.maxPolarAngle = Math.PI * 0.48;
+    controls.target.set(0, 3.6, 0);
+
+    const tank = {
+      width: 22,
+      height: 10,
+      depth: 10,
+      minX: -10.6,
+      maxX: 10.6,
+      minY: 0.6,
+      maxY: 9.2,
+      minZ: -4.7,
+      maxZ: 4.7
+    };
+
+    const clickableMeshes = [];
+    const animatedPlants = [];
+    const bubbles = [];
+    const fishes = [];
+    const speciesBuckets = new Map();
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const clock = new THREE.Clock();
+
+    const tempA = new THREE.Vector3();
+    const tempB = new THREE.Vector3();
+    const tempLook = new THREE.Vector3();
+
+    function rand(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function createSandTexture(size = 768) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      const grad = ctx.createLinearGradient(0, 0, 0, size);
+      grad.addColorStop(0, '#7c6a43');
+      grad.addColorStop(1, '#3b2d1b');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, size, size);
+
+      for (let i = 0; i < 64000; i += 1) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const a = Math.random() * 0.38;
+        const r = Math.random() * 1.6 + 0.15;
+        ctx.fillStyle = `rgba(${86 + Math.random() * 120}, ${67 + Math.random() * 80}, ${36 + Math.random() * 55}, ${a})`;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(4, 2);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function createBackTexture(size = 1024) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      const grad = ctx.createLinearGradient(0, 0, 0, size);
+      grad.addColorStop(0, '#274753');
+      grad.addColorStop(0.4, '#16363f');
+      grad.addColorStop(1, '#0a1c22');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, size, size);
+
+      for (let i = 0; i < 4200; i += 1) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const alpha = Math.random() * 0.25;
+        ctx.fillStyle = `rgba(147, 210, 206, ${alpha})`;
+        ctx.fillRect(x, y, Math.random() * 3 + 1, Math.random() * 28 + 8);
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function kelvinToColor(kelvin) {
+      const k = kelvin / 100;
+      let r;
+      let g;
+      let b;
+
+      if (k <= 66) {
+        r = 255;
+        g = 99.4708025861 * Math.log(k) - 161.1195681661;
+      } else {
+        r = 329.698727446 * Math.pow(k - 60, -0.1332047592);
+        g = 288.1221695283 * Math.pow(k - 60, -0.0755148492);
+      }
+
+      if (k >= 66) {
+        b = 255;
+      } else if (k <= 19) {
+        b = 0;
+      } else {
+        b = 138.5177312231 * Math.log(k - 10) - 305.0447927307;
+      }
+
+      return new THREE.Color(
+        THREE.MathUtils.clamp(r / 255, 0, 1),
+        THREE.MathUtils.clamp(g / 255, 0, 1),
+        THREE.MathUtils.clamp(b / 255, 0, 1)
+      );
+    }
+
+    function markInteractive(root, label, quote) {
+      const info = { label, quote };
+      root.userData.interactive = info;
+      root.traverse((child) => {
+        if (!child.isMesh) {
+          return;
+        }
+        child.userData.interactive = info;
+        child.userData.interactiveRoot = root;
+        clickableMeshes.push(child);
+      });
+    }
+
+    function showQuote(info) {
+      quoteLabel.textContent = info.label;
+      quoteText.textContent = info.quote;
+    }
+
+    function createTankEnvironment() {
+      const tankGroup = new THREE.Group();
+      scene.add(tankGroup);
+
+      const sandMap = createSandTexture();
+      const backMap = createBackTexture();
+
+      const floor = new THREE.Mesh(
+        new THREE.PlaneGeometry(tank.width, tank.depth, 1, 1),
+        new THREE.MeshStandardMaterial({
+          map: sandMap,
+          roughness: 0.95,
+          metalness: 0.02
+        })
+      );
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = 0;
+      tankGroup.add(floor);
+
+      const frontSlope = new THREE.Mesh(
+        new THREE.BoxGeometry(tank.width, 1.45, 1.28),
+        new THREE.MeshStandardMaterial({
+          color: 0x221912,
+          roughness: 0.93,
+          metalness: 0
+        })
+      );
+      frontSlope.position.set(0, -0.52, tank.maxZ + 0.42);
+      tankGroup.add(frontSlope);
+
+      const backWall = new THREE.Mesh(
+        new THREE.PlaneGeometry(tank.width, tank.height),
+        new THREE.MeshStandardMaterial({
+          map: backMap,
+          roughness: 0.95,
+          metalness: 0.03
+        })
+      );
+      backWall.position.set(0, tank.height / 2, tank.minZ + 0.02);
+      tankGroup.add(backWall);
+
+      const sideMat = new THREE.MeshStandardMaterial({
+        color: 0x19333a,
+        roughness: 0.98,
+        metalness: 0.01
+      });
+
+      const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(tank.depth, tank.height), sideMat);
+      leftWall.rotation.y = Math.PI / 2;
+      leftWall.position.set(tank.minX, tank.height / 2, 0);
+      tankGroup.add(leftWall);
+
+      const rightWall = leftWall.clone();
+      rightWall.rotation.y = -Math.PI / 2;
+      rightWall.position.set(tank.maxX, tank.height / 2, 0);
+      tankGroup.add(rightWall);
+
+      const glass = new THREE.Mesh(
+        new THREE.BoxGeometry(tank.width + 0.2, tank.height + 0.2, tank.depth + 0.2),
+        new THREE.MeshPhysicalMaterial({
+          color: 0x8dd4dc,
+          roughness: 0.08,
+          transmission: 0.95,
+          thickness: 0.7,
+          transparent: true,
+          opacity: 0.12,
+          ior: 1.15,
+          side: THREE.BackSide
+        })
+      );
+      glass.position.y = tank.height / 2;
+      tankGroup.add(glass);
+
+      const waterTopGeometry = new THREE.PlaneGeometry(tank.width, tank.depth, 40, 24);
+      const waterTop = new THREE.Mesh(
+        waterTopGeometry,
+        new THREE.MeshStandardMaterial({
+          color: 0x5db8d4,
+          transparent: true,
+          opacity: 0.24,
+          roughness: 0.2,
+          metalness: 0.04,
+          side: THREE.DoubleSide
+        })
+      );
+      waterTop.rotation.x = -Math.PI / 2;
+      waterTop.position.y = tank.maxY;
+      scene.add(waterTop);
+
+      return { waterTop };
+    }
+
+    function createRock(radius, color = 0x5c6a61) {
+      const geo = new THREE.IcosahedronGeometry(radius, 2);
+      const pos = geo.attributes.position;
+
+      for (let i = 0; i < pos.count; i += 1) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const wobble =
+          Math.sin(x * 2.7 + z * 3.1 + i * 0.2) * 0.1 +
+          Math.sin(y * 4.1 + i * 0.42) * 0.08 +
+          Math.cos((x + y + z) * 3.8) * 0.05;
+        const scale = 1 + wobble;
+        pos.setXYZ(i, x * scale, y * scale, z * scale);
+      }
+
+      geo.computeVertexNormals();
+      return new THREE.Mesh(
+        geo,
+        new THREE.MeshStandardMaterial({
+          color,
+          roughness: 0.97,
+          metalness: 0.02
+        })
+      );
+    }
+
+    function createRockscape() {
+      const rocks = new THREE.Group();
+      scene.add(rocks);
+
+      const placements = [
+        { p: [-5.7, 1.2, -1.5], s: 2.3, c: 0x55645b },
+        { p: [-3.9, 1.0, -0.8], s: 1.9, c: 0x607168 },
+        { p: [-1.8, 0.95, -0.35], s: 1.6, c: 0x4e5e55 },
+        { p: [0.2, 1.15, -0.5], s: 1.95, c: 0x5b6d62 },
+        { p: [2.4, 1.1, -0.9], s: 2.2, c: 0x57695f },
+        { p: [4.4, 1.35, -1.2], s: 2.35, c: 0x61756a },
+        { p: [6.2, 1.0, -1.45], s: 1.55, c: 0x4f6259 },
+        { p: [-6.8, 0.72, 0.7], s: 1.2, c: 0x56675d },
+        { p: [5.4, 0.65, 0.72], s: 1.05, c: 0x65796d }
+      ];
+
+      placements.forEach((item) => {
+        const rock = createRock(item.s, item.c);
+        rock.position.set(item.p[0], item.p[1], item.p[2]);
+        rock.scale.set(1, rand(0.7, 1.1), rand(0.9, 1.2));
+        rocks.add(rock);
+      });
+
+      markInteractive(
+        rocks,
+        '바위 지형',
+        '강한 물살을 견뎌낸 돌처럼, 흔들려도 결국 자리를 지키는 마음이 깊이를 만든다.'
+      );
+
+      return rocks;
+    }
+
+    function createDriftwood() {
+      const woodGroup = new THREE.Group();
+      scene.add(woodGroup);
+
+      const woodMat = new THREE.MeshStandardMaterial({
+        color: 0x5f3d23,
+        roughness: 0.92,
+        metalness: 0.05
+      });
+
+      const mainCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-6.4, 1.15, -1.5),
+        new THREE.Vector3(-5.3, 2.8, -2.0),
+        new THREE.Vector3(-3.7, 4.1, -2.35),
+        new THREE.Vector3(-1.3, 5.0, -2.0),
+        new THREE.Vector3(1.4, 5.4, -1.3)
+      ]);
+
+      const trunk = new THREE.Mesh(new THREE.TubeGeometry(mainCurve, 90, 0.24, 12, false), woodMat);
+      woodGroup.add(trunk);
+
+      const branchCurveA = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-3.4, 3.7, -2.4),
+        new THREE.Vector3(-2.6, 5.3, -2.9),
+        new THREE.Vector3(-1.6, 6.45, -3.1)
+      ]);
+      const branchA = new THREE.Mesh(new THREE.TubeGeometry(branchCurveA, 40, 0.11, 10, false), woodMat);
+      woodGroup.add(branchA);
+
+      const branchCurveB = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-1.4, 5.0, -2.05),
+        new THREE.Vector3(-0.25, 6.25, -2.55),
+        new THREE.Vector3(0.8, 7.1, -2.95)
+      ]);
+      const branchB = new THREE.Mesh(new THREE.TubeGeometry(branchCurveB, 40, 0.1, 10, false), woodMat);
+      woodGroup.add(branchB);
+
+      const branchCurveC = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-2.5, 4.3, -2.3),
+        new THREE.Vector3(-2.8, 5.8, -1.4),
+        new THREE.Vector3(-2.9, 6.8, -0.7)
+      ]);
+      const branchC = new THREE.Mesh(new THREE.TubeGeometry(branchCurveC, 32, 0.08, 10, false), woodMat);
+      woodGroup.add(branchC);
+
+      markInteractive(
+        woodGroup,
+        '유목',
+        '많은 사람들이 평생을 낚시를 하면서도, 그들이 추구하는 것이 물고기가 아니라는 것을 깨닫지 못한다. - 헨리 데이비드 소로우'
+      );
+
+      return woodGroup;
+    }
+
+    function createPlantBlade(height, width, color) {
+      const blade = new THREE.Mesh(
+        new THREE.PlaneGeometry(width, height, 1, 8),
+        new THREE.MeshStandardMaterial({
+          color,
+          roughness: 0.67,
+          metalness: 0,
+          side: THREE.DoubleSide
+        })
+      );
+      blade.position.y = height * 0.5;
+      return blade;
+    }
+
+    function createPlantCluster({ x, z, count, spread, palette, maxHeight, minHeight, quote, label }) {
+      const group = new THREE.Group();
+      group.position.set(x, 0, z);
+      scene.add(group);
+
+      for (let i = 0; i < count; i += 1) {
+        const pivot = new THREE.Object3D();
+        pivot.position.set(rand(-spread, spread), 0, rand(-spread, spread));
+        pivot.rotation.x = rand(-0.05, 0.06);
+        pivot.rotation.z = rand(-0.1, 0.1);
+
+        const height = rand(minHeight, maxHeight);
+        const blade = createPlantBlade(height, rand(0.07, 0.17), palette[Math.floor(rand(0, palette.length))]);
+        blade.rotation.y = rand(0, Math.PI);
+
+        const crown = new THREE.Mesh(
+          new THREE.SphereGeometry(rand(0.05, 0.09), 8, 8),
+          new THREE.MeshStandardMaterial({
+            color: palette[Math.floor(rand(0, palette.length))],
+            roughness: 0.5,
+            metalness: 0
+          })
+        );
+        crown.position.y = height * rand(0.75, 0.96);
+        crown.position.x = rand(-0.05, 0.05);
+        crown.position.z = rand(-0.05, 0.05);
+
+        pivot.add(blade);
+        pivot.add(crown);
+        group.add(pivot);
+
+        animatedPlants.push({
+          pivot,
+          baseX: pivot.rotation.x,
+          baseZ: pivot.rotation.z,
+          phase: Math.random() * Math.PI * 2,
+          sway: rand(0.07, 0.25),
+          speed: rand(0.8, 1.8)
+        });
+      }
+
+      markInteractive(group, label, quote);
+      return group;
+    }
+
+    function createAquascape() {
+      createRockscape();
+      createDriftwood();
+
+      createPlantCluster({
+        x: -5.4,
+        z: -1.0,
+        count: 45,
+        spread: 1.5,
+        palette: [0x4f9d3f, 0x6ebf45, 0x3f8c3f, 0x7ac663],
+        maxHeight: 3.6,
+        minHeight: 1.4,
+        label: '수초 군락',
+        quote: '물속의 풀잎은 서두르지 않는다. 흐름에 맞춰 흔들릴 뿐이다.'
+      });
+
+      createPlantCluster({
+        x: -1.7,
+        z: -0.05,
+        count: 28,
+        spread: 1.2,
+        palette: [0x5fae46, 0x6cbe4f, 0x85cd64],
+        maxHeight: 2.8,
+        minHeight: 1.0,
+        label: '중앙 수초',
+        quote: '작은 잎들이 모여 물의 풍경을 만든다. 삶도 그렇게 밀도를 얻는다.'
+      });
+
+      createPlantCluster({
+        x: 4.9,
+        z: -1.3,
+        count: 52,
+        spread: 1.55,
+        palette: [0x8a2c38, 0xa6384a, 0xbd5562, 0x9f3342],
+        maxHeight: 3.3,
+        minHeight: 1.2,
+        label: '붉은 수초',
+        quote: '색이 진하다는 건 빛을 많이 견뎠다는 뜻이다.'
+      });
+
+      createPlantCluster({
+        x: 6.8,
+        z: 0.55,
+        count: 19,
+        spread: 1.0,
+        palette: [0x4f9d3f, 0x67b54d, 0x85c66b],
+        maxHeight: 2.2,
+        minHeight: 0.8,
+        label: '전경 수초',
+        quote: '가장 앞의 작은 생명도 전체 풍경의 균형을 완성한다.'
+      });
+    }
+
+    function createPebbles() {
+      const pebbleGeo = new THREE.SphereGeometry(0.07, 8, 8);
+      const pebbleMat = new THREE.MeshStandardMaterial({ color: 0x8f7b56, roughness: 0.9, metalness: 0 });
+      const count = 460;
+      const mesh = new THREE.InstancedMesh(pebbleGeo, pebbleMat, count);
+      const matrix = new THREE.Matrix4();
+      const quat = new THREE.Quaternion();
+      const scale = new THREE.Vector3();
+
+      for (let i = 0; i < count; i += 1) {
+        const pos = new THREE.Vector3(rand(tank.minX + 0.4, tank.maxX - 0.4), rand(0.03, 0.1), rand(tank.minZ + 0.4, tank.maxZ - 0.2));
+        quat.setFromEuler(new THREE.Euler(rand(0, Math.PI), rand(0, Math.PI), rand(0, Math.PI)));
+        const s = rand(0.55, 1.7);
+        scale.set(s * 0.9, s * 0.65, s);
+        matrix.compose(pos, quat, scale);
+        mesh.setMatrixAt(i, matrix);
+      }
+
+      scene.add(mesh);
+    }
+
+    function createBubbleField() {
+      const bubbleMat = new THREE.MeshPhysicalMaterial({
+        color: 0xb8ecff,
+        transparent: true,
+        opacity: 0.42,
+        roughness: 0.08,
+        metalness: 0,
+        transmission: 0.9,
+        ior: 1.05,
+        depthWrite: false
+      });
+
+      const emitters = [
+        new THREE.Vector3(-3.8, 0.6, -0.9),
+        new THREE.Vector3(0.9, 0.6, -0.4),
+        new THREE.Vector3(5.8, 0.6, -0.8)
+      ];
+
+      function resetBubble(bubble, soft = false) {
+        bubble.mesh.position.set(
+          bubble.emitter.x + rand(-0.35, 0.35),
+          soft ? rand(0.6, tank.maxY - 0.3) : rand(0.48, 1.4),
+          bubble.emitter.z + rand(-0.25, 0.25)
+        );
+        const s = rand(0.5, 1.5);
+        bubble.mesh.scale.setScalar(s);
+        bubble.speed = rand(0.52, 1.4);
+        bubble.wobble = rand(0.05, 0.16);
+        bubble.phase = Math.random() * Math.PI * 2;
+        bubble.freq = rand(0.6, 1.7);
+      }
+
+      emitters.forEach((emitter, idx) => {
+        const count = idx === 1 ? 54 : 42;
+        for (let i = 0; i < count; i += 1) {
+          const geo = new THREE.SphereGeometry(rand(0.03, 0.11), 10, 10);
+          const mesh = new THREE.Mesh(geo, bubbleMat);
+          scene.add(mesh);
+
+          const bubble = {
+            mesh,
+            emitter: emitter.clone(),
+            speed: 1,
+            wobble: 0.1,
+            phase: Math.random() * Math.PI * 2,
+            freq: rand(0.5, 1.8)
+          };
+          resetBubble(bubble, true);
+          bubbles.push(bubble);
+        }
+      });
+
+      const airStone = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.23, 0.27, 0.32, 18),
+        new THREE.MeshStandardMaterial({ color: 0x4d5752, roughness: 0.95, metalness: 0.03 })
+      );
+      airStone.position.set(0.9, 0.21, -0.4);
+      scene.add(airStone);
+      markInteractive(airStone, '기포 스톤', '작은 공기 한 줄기가 물의 리듬을 바꾼다. 변화는 늘 미세한 데서 시작된다.');
+
+      return resetBubble;
+    }
+
+    function decorateFishEyes(group, radius = 0.05, z = -0.55, spread = 0.18) {
+      const eyeMat = new THREE.MeshStandardMaterial({ color: 0x07090a, roughness: 0.3, metalness: 0.1 });
+      const eyeGeo = new THREE.SphereGeometry(radius, 10, 10);
+
+      const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+      eyeL.position.set(-spread, 0.08, z);
+      const eyeR = eyeL.clone();
+      eyeR.position.x = spread;
+
+      group.add(eyeL);
+      group.add(eyeR);
+    }
+
+    function createNeonTetra() {
+      const root = new THREE.Group();
+
+      const body = new THREE.Mesh(
+        new THREE.SphereGeometry(0.42, 22, 14),
+        new THREE.MeshStandardMaterial({ color: 0x2d5bcf, roughness: 0.5, metalness: 0.12 })
+      );
+      body.scale.set(0.83, 0.52, 1.62);
+      root.add(body);
+
+      const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(0.78, 0.1, 1.72),
+        new THREE.MeshStandardMaterial({
+          color: 0x79f2ff,
+          emissive: 0x0d4452,
+          emissiveIntensity: 0.38,
+          roughness: 0.45,
+          metalness: 0.14
+        })
+      );
+      stripe.position.y = 0.04;
+      stripe.position.z = -0.05;
+      root.add(stripe);
+
+      const tail = new THREE.Mesh(
+        new THREE.ConeGeometry(0.22, 0.52, 12),
+        new THREE.MeshStandardMaterial({ color: 0xff5b58, roughness: 0.4, metalness: 0.04 })
+      );
+      tail.rotation.x = Math.PI / 2;
+      tail.position.z = 1.0;
+      root.add(tail);
+
+      const finMat = new THREE.MeshStandardMaterial({ color: 0x93d9f5, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+      const finGeo = new THREE.PlaneGeometry(0.3, 0.16);
+
+      const leftFin = new THREE.Mesh(finGeo, finMat);
+      leftFin.position.set(-0.36, -0.05, 0.05);
+      leftFin.rotation.y = Math.PI / 2;
+
+      const rightFin = leftFin.clone();
+      rightFin.position.x = 0.36;
+      rightFin.rotation.y = -Math.PI / 2;
+
+      const dorsalFin = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.28), finMat.clone());
+      dorsalFin.position.set(0, 0.34, 0.03);
+
+      root.add(leftFin);
+      root.add(rightFin);
+      root.add(dorsalFin);
+
+      decorateFishEyes(root, 0.047, -0.57, 0.17);
+
+      return {
+        root,
+        body,
+        tails: [tail],
+        fins: [
+          { mesh: leftFin, axis: 'z', base: 0.1, amp: 0.3, offset: Math.random() * 10 },
+          { mesh: rightFin, axis: 'z', base: -0.1, amp: 0.3, offset: Math.random() * 10 },
+          { mesh: dorsalFin, axis: 'x', base: 0.08, amp: 0.18, offset: Math.random() * 10 }
+        ]
+      };
+    }
+
+    function createAmberRasbora() {
+      const root = new THREE.Group();
+
+      const body = new THREE.Mesh(
+        new THREE.SphereGeometry(0.5, 24, 16),
+        new THREE.MeshStandardMaterial({ color: 0xd4862f, roughness: 0.48, metalness: 0.12 })
+      );
+      body.scale.set(0.94, 0.64, 1.42);
+      root.add(body);
+
+      const belly = new THREE.Mesh(
+        new THREE.SphereGeometry(0.42, 18, 12),
+        new THREE.MeshStandardMaterial({ color: 0xe9b364, roughness: 0.5, metalness: 0.05 })
+      );
+      belly.scale.set(0.9, 0.42, 1.2);
+      belly.position.y = -0.12;
+      root.add(belly);
+
+      const finMat = new THREE.MeshStandardMaterial({ color: 0xf2cf91, transparent: true, opacity: 0.82, side: THREE.DoubleSide });
+      const tailL = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.48), finMat);
+      tailL.position.set(-0.1, 0.03, 0.96);
+      tailL.rotation.set(0.26, 0.36, -0.08);
+
+      const tailR = tailL.clone();
+      tailR.position.x = 0.1;
+      tailR.rotation.y *= -1;
+      tailR.rotation.z *= -1;
+
+      const pectoralL = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.16), finMat.clone());
+      pectoralL.position.set(-0.43, -0.02, 0.1);
+      pectoralL.rotation.y = Math.PI / 2;
+      const pectoralR = pectoralL.clone();
+      pectoralR.position.x = 0.43;
+      pectoralR.rotation.y = -Math.PI / 2;
+
+      const dorsal = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.28), finMat.clone());
+      dorsal.position.set(0, 0.4, 0.09);
+
+      root.add(tailL);
+      root.add(tailR);
+      root.add(pectoralL);
+      root.add(pectoralR);
+      root.add(dorsal);
+
+      decorateFishEyes(root, 0.055, -0.5, 0.2);
+
+      return {
+        root,
+        body,
+        tails: [tailL, tailR],
+        fins: [
+          { mesh: pectoralL, axis: 'z', base: 0.1, amp: 0.33, offset: Math.random() * 10 },
+          { mesh: pectoralR, axis: 'z', base: -0.1, amp: 0.33, offset: Math.random() * 10 },
+          { mesh: dorsal, axis: 'x', base: 0.1, amp: 0.2, offset: Math.random() * 10 }
+        ]
+      };
+    }
+
+    function createAngelfish() {
+      const root = new THREE.Group();
+
+      const body = new THREE.Mesh(
+        new THREE.SphereGeometry(0.56, 26, 18),
+        new THREE.MeshStandardMaterial({ color: 0xbecdc8, roughness: 0.42, metalness: 0.14 })
+      );
+      body.scale.set(0.83, 1.38, 0.58);
+      root.add(body);
+
+      const stripeMat = new THREE.MeshStandardMaterial({ color: 0x4a5351, roughness: 0.7, metalness: 0.05 });
+      for (let i = -1; i <= 1; i += 1) {
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.45, 0.75), stripeMat);
+        stripe.position.set(i * 0.18, 0.08, 0.02);
+        root.add(stripe);
+      }
+
+      const finMat = new THREE.MeshStandardMaterial({ color: 0xcddfd9, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+
+      const dorsal = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 1.0), finMat);
+      dorsal.position.set(0, 0.92, 0.08);
+
+      const anal = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.94), finMat.clone());
+      anal.position.set(0, -0.88, 0.08);
+
+      const tail = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.7), finMat.clone());
+      tail.position.set(0, 0, 0.78);
+
+      const ventralL = new THREE.Mesh(new THREE.PlaneGeometry(0.04, 0.78), finMat.clone());
+      ventralL.position.set(-0.13, -0.95, -0.12);
+
+      const ventralR = ventralL.clone();
+      ventralR.position.x = 0.13;
+
+      root.add(dorsal);
+      root.add(anal);
+      root.add(tail);
+      root.add(ventralL);
+      root.add(ventralR);
+
+      decorateFishEyes(root, 0.048, -0.42, 0.13);
+
+      return {
+        root,
+        body,
+        tails: [tail],
+        fins: [
+          { mesh: dorsal, axis: 'z', base: 0.04, amp: 0.08, offset: Math.random() * 10 },
+          { mesh: anal, axis: 'z', base: -0.04, amp: 0.08, offset: Math.random() * 10 },
+          { mesh: ventralL, axis: 'z', base: -0.1, amp: 0.12, offset: Math.random() * 10 },
+          { mesh: ventralR, axis: 'z', base: 0.1, amp: 0.12, offset: Math.random() * 10 }
+        ]
+      };
+    }
+
+    function randomTarget(minY, maxY) {
+      return new THREE.Vector3(
+        rand(tank.minX + 1.2, tank.maxX - 1.2),
+        rand(minY, maxY),
+        rand(tank.minZ + 0.7, tank.maxZ - 0.7)
+      );
+    }
+
+    function addFishes() {
+      const species = [
+        {
+          key: 'neon',
+          label: '네온 테트라',
+          count: 14,
+          speed: 2.1,
+          minY: 1.4,
+          maxY: 6.4,
+          schooling: 0.34,
+          tailAmp: 0.62,
+          finSpeed: 8.2,
+          creator: createNeonTetra,
+          quote: '가장 작은 물고기도 떼를 이루면 바다처럼 거대한 결정을 만든다.'
+        },
+        {
+          key: 'amber',
+          label: '앰버 라스보라',
+          count: 9,
+          speed: 1.7,
+          minY: 1.0,
+          maxY: 5.8,
+          schooling: 0.18,
+          tailAmp: 0.5,
+          finSpeed: 6.4,
+          creator: createAmberRasbora,
+          quote: '부드럽게 헤엄치는 힘은 빠름보다 오래 간다.'
+        },
+        {
+          key: 'angel',
+          label: '엔젤피시',
+          count: 6,
+          speed: 1.15,
+          minY: 2.3,
+          maxY: 7.5,
+          schooling: 0.08,
+          tailAmp: 0.32,
+          finSpeed: 4.8,
+          creator: createAngelfish,
+          quote: '우아함은 멈춰 있는 모양이 아니라, 흐르는 움직임에서 완성된다.'
+        }
+      ];
+
+      species.forEach((spec) => {
+        const bucket = [];
+        speciesBuckets.set(spec.key, bucket);
+
+        for (let i = 0; i < spec.count; i += 1) {
+          const fishModel = spec.creator();
+          const scale = spec.key === 'angel' ? rand(0.78, 1.15) : rand(0.62, 1.02);
+          fishModel.root.scale.setScalar(scale);
+          fishModel.root.position.copy(randomTarget(spec.minY, spec.maxY));
+
+          const fish = {
+            ...fishModel,
+            species: spec,
+            speed: spec.speed * rand(0.82, 1.18),
+            velocity: new THREE.Vector3(rand(-1, 1), rand(-0.35, 0.35), rand(-1, 1)).normalize().multiplyScalar(spec.speed),
+            target: randomTarget(spec.minY, spec.maxY),
+            phase: Math.random() * Math.PI * 2,
+            rollAmp: rand(0.08, 0.2)
+          };
+
+          scene.add(fish.root);
+          fishes.push(fish);
+          bucket.push(fish);
+
+          markInteractive(fish.root, spec.label, spec.quote);
+        }
+      });
+    }
+
+    function updateFish(dt, elapsed) {
+      speciesBuckets.forEach((bucket) => {
+        if (bucket.length === 0) {
+          return;
+        }
+
+        tempA.set(0, 0, 0);
+        bucket.forEach((fish) => tempA.add(fish.root.position));
+        tempA.multiplyScalar(1 / bucket.length);
+
+        bucket.forEach((fish) => {
+          const spec = fish.species;
+          tempB.subVectors(fish.target, fish.root.position);
+          const dist = tempB.length();
+
+          if (dist < 0.9) {
+            fish.target.copy(randomTarget(spec.minY, spec.maxY));
+            tempB.subVectors(fish.target, fish.root.position);
+          }
+
+          if (tempB.lengthSq() > 0.0001) {
+            tempB.normalize().multiplyScalar(fish.speed);
+          }
+
+          if (spec.schooling > 0) {
+            const towardCenter = tempLook.subVectors(tempA, fish.root.position).multiplyScalar(spec.schooling);
+            tempB.add(towardCenter);
+          }
+
+          const margin = 1.1;
+          if (fish.root.position.x < tank.minX + margin) {
+            tempB.x += (tank.minX + margin - fish.root.position.x) * 1.5;
+          }
+          if (fish.root.position.x > tank.maxX - margin) {
+            tempB.x -= (fish.root.position.x - (tank.maxX - margin)) * 1.5;
+          }
+          if (fish.root.position.y < spec.minY + 0.35) {
+            tempB.y += (spec.minY + 0.35 - fish.root.position.y) * 1.45;
+          }
+          if (fish.root.position.y > spec.maxY - 0.25) {
+            tempB.y -= (fish.root.position.y - (spec.maxY - 0.25)) * 1.3;
+          }
+          if (fish.root.position.z < tank.minZ + margin) {
+            tempB.z += (tank.minZ + margin - fish.root.position.z) * 1.3;
+          }
+          if (fish.root.position.z > tank.maxZ - margin) {
+            tempB.z -= (fish.root.position.z - (tank.maxZ - margin)) * 1.3;
+          }
+
+          tempB.clampLength(0, fish.speed * 1.5);
+          fish.velocity.lerp(tempB, Math.min(1, dt * 1.85));
+
+          fish.root.position.addScaledVector(fish.velocity, dt);
+          fish.root.position.x = THREE.MathUtils.clamp(fish.root.position.x, tank.minX + 0.55, tank.maxX - 0.55);
+          fish.root.position.y = THREE.MathUtils.clamp(fish.root.position.y, spec.minY, spec.maxY);
+          fish.root.position.z = THREE.MathUtils.clamp(fish.root.position.z, tank.minZ + 0.42, tank.maxZ - 0.42);
+
+          if (fish.velocity.lengthSq() > 0.0001) {
+            tempLook.copy(fish.root.position).add(fish.velocity);
+            fish.root.lookAt(tempLook);
+          }
+
+          const beat = elapsed * spec.finSpeed + fish.phase;
+
+          fish.tails.forEach((tail, idx) => {
+            tail.rotation.y = Math.sin(beat + idx * 0.55) * spec.tailAmp;
+          });
+
+          fish.fins.forEach((fin) => {
+            const v = Math.sin(beat * 1.32 + fin.offset) * fin.amp;
+            fin.mesh.rotation[fin.axis] = fin.base + v;
+          });
+
+          fish.body.rotation.y = Math.sin(beat * 0.95) * 0.04;
+          fish.root.rotation.z += Math.sin(beat * 0.44) * fish.rollAmp * dt * 0.2;
+        });
+      });
+    }
+
+    function createWaterParticles() {
+      const count = 560;
+      const positions = new Float32Array(count * 3);
+
+      for (let i = 0; i < count; i += 1) {
+        positions[i * 3 + 0] = rand(tank.minX + 0.4, tank.maxX - 0.4);
+        positions[i * 3 + 1] = rand(tank.minY + 0.2, tank.maxY - 0.1);
+        positions[i * 3 + 2] = rand(tank.minZ + 0.2, tank.maxZ - 0.2);
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+      const mat = new THREE.PointsMaterial({
+        color: 0xb6e4dd,
+        size: 0.04,
+        transparent: true,
+        opacity: 0.24,
+        depthWrite: false
+      });
+
+      const points = new THREE.Points(geo, mat);
+      scene.add(points);
+
+      return { points, positions };
+    }
+
+    function applyInteractiveClick(event) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(clickableMeshes, false);
+
+      if (hits.length === 0) {
+        return;
+      }
+
+      const hit = hits[0].object;
+      const info = hit.userData.interactive;
+      if (!info) {
+        return;
+      }
+
+      showQuote(info);
+
+      const root = hit.userData.interactiveRoot;
+      if (!root) {
+        return;
+      }
+
+      const flashed = [];
+      root.traverse((child) => {
+        if (!child.isMesh) {
+          return;
+        }
+        const material = child.material;
+        if (!material || !('emissive' in material)) {
+          return;
+        }
+        flashed.push({ material, original: material.emissive.getHex() });
+        material.emissive = material.emissive.clone().lerp(new THREE.Color(0x9fe8c8), 0.55);
+      });
+
+      setTimeout(() => {
+        flashed.forEach((item) => {
+          item.material.emissive.setHex(item.original);
+        });
+      }, 420);
+    }
+
+    const ambientLight = new THREE.AmbientLight(0x90cdd8, 0.46);
+    scene.add(ambientLight);
+
+    const keyLight = new THREE.DirectionalLight(0xdff5ff, 1.2);
+    keyLight.position.set(-3.2, 12.2, 5.2);
+    scene.add(keyLight);
+
+    const fillLight = new THREE.PointLight(0x8cc8e3, 0.74, 38, 2);
+    fillLight.position.set(7.2, 5.2, 3.4);
+    scene.add(fillLight);
+
+    const backLight = new THREE.PointLight(0x5ad6b1, 0.36, 26, 2);
+    backLight.position.set(-6.8, 4.5, -4.5);
+    scene.add(backLight);
+
+    const { waterTop } = createTankEnvironment();
+    createAquascape();
+    createPebbles();
+    const resetBubble = createBubbleField();
+    addFishes();
+    const waterParticles = createWaterParticles();
+
+    function applyIntensityControl() {
+      const level = Number(intensityInput.value);
+      intensityValue.textContent = level.toFixed(2);
+      keyLight.intensity = level;
+      fillLight.intensity = level * 0.61;
+      ambientLight.intensity = 0.2 + level * 0.25;
+      backLight.intensity = 0.16 + level * 0.17;
+    }
+
+    function applyWarmthControl() {
+      const kelvin = Number(warmthInput.value);
+      warmthValue.textContent = `${kelvin}K`;
+      const color = kelvinToColor(kelvin);
+      keyLight.color.copy(color);
+      fillLight.color.copy(color.clone().offsetHSL(0.02, -0.04, 0.03));
+      ambientLight.color.copy(color.clone().offsetHSL(-0.03, -0.18, 0.08));
+    }
+
+    intensityInput.addEventListener('input', applyIntensityControl);
+    warmthInput.addEventListener('input', applyWarmthControl);
+    applyIntensityControl();
+    applyWarmthControl();
+
+    renderer.domElement.addEventListener('pointerdown', applyInteractiveClick);
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const elapsed = clock.getElapsedTime();
+      const dt = Math.min(clock.getDelta(), 0.033);
+
+      controls.update();
+
+      animatedPlants.forEach((plant) => {
+        plant.pivot.rotation.z = plant.baseZ + Math.sin(elapsed * plant.speed + plant.phase) * plant.sway;
+        plant.pivot.rotation.x = plant.baseX + Math.cos(elapsed * plant.speed * 0.72 + plant.phase) * plant.sway * 0.4;
+      });
+
+      bubbles.forEach((bubble) => {
+        bubble.mesh.position.y += bubble.speed * dt;
+        bubble.mesh.position.x += Math.sin(elapsed * bubble.freq + bubble.phase) * bubble.wobble * dt;
+        bubble.mesh.position.z += Math.cos(elapsed * (bubble.freq * 0.7) + bubble.phase) * bubble.wobble * dt * 0.8;
+
+        if (bubble.mesh.position.y > tank.maxY + 0.02) {
+          resetBubble(bubble, false);
+        }
+      });
+
+      const waterPos = waterTop.geometry.attributes.position;
+      for (let i = 0; i < waterPos.count; i += 1) {
+        const x = waterPos.getX(i);
+        const z = waterPos.getZ(i);
+        const wave = Math.sin(x * 0.55 + elapsed * 1.4) * 0.05 + Math.cos(z * 0.7 + elapsed * 1.1) * 0.035;
+        waterPos.setY(i, wave);
+      }
+      waterPos.needsUpdate = true;
+      waterTop.geometry.computeVertexNormals();
+
+      keyLight.position.x = -3.2 + Math.sin(elapsed * 0.23) * 1.4;
+      keyLight.position.z = 5.2 + Math.cos(elapsed * 0.21) * 0.85;
+
+      fillLight.position.y = 5.2 + Math.sin(elapsed * 0.33) * 0.3;
+
+      updateFish(dt, elapsed);
+
+      const p = waterParticles.positions;
+      for (let i = 0; i < p.length; i += 3) {
+        p[i] += Math.sin(elapsed * 0.25 + i * 0.003) * 0.0004;
+        p[i + 1] += 0.11 * dt;
+        p[i + 2] += Math.cos(elapsed * 0.19 + i * 0.0027) * 0.0003;
+
+        if (p[i + 1] > tank.maxY - 0.1) {
+          p[i + 1] = tank.minY + 0.1;
+        }
+      }
+      waterParticles.points.geometry.attributes.position.needsUpdate = true;
+
+      renderer.render(scene, camera);
+    }
+
+    showQuote({
+      label: '오브젝트 명언',
+      quote: '수족관 속 오브젝트를 클릭하면 관련된 명언이 표시됩니다.'
+    });
+
+    animate();
+  </script>
+</body>
+</html>

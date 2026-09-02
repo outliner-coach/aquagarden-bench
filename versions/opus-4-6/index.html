@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>아쿠아가든 2026 — 3D 디지털 수족관</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: 'Noto Serif KR', serif; }
+
+    #canvas-container { width: 100vw; height: 100vh; position: relative; }
+    canvas { display: block; }
+
+    /* ── 조명 패널 ── */
+    #light-panel {
+      position: fixed; top: 20px; right: 20px;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 16px;
+      padding: 18px 22px;
+      color: #e8f4f8;
+      width: 220px;
+      z-index: 100;
+      box-shadow: 0 8px 32px rgba(0,60,120,0.4);
+    }
+    #light-panel h3 {
+      font-size: 13px; letter-spacing: 2px; text-transform: uppercase;
+      color: #7dd3fc; margin-bottom: 14px; text-align: center;
+    }
+    .slider-row { margin-bottom: 12px; }
+    .slider-row label { font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .slider-row input[type=range] {
+      width: 100%; -webkit-appearance: none; height: 4px;
+      border-radius: 2px; background: rgba(255,255,255,0.15); outline: none;
+    }
+    .slider-row input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+      background: #38bdf8; cursor: pointer; box-shadow: 0 0 6px #38bdf8;
+    }
+    #color-row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+    .color-btn {
+      width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent;
+      cursor: pointer; transition: transform .2s, border-color .2s;
+    }
+    .color-btn:hover, .color-btn.active { transform: scale(1.2); border-color: #fff; }
+
+    /* ── 명언 팝업 ── */
+    #quote-popup {
+      position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(30px);
+      background: rgba(0,10,30,0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(100,200,255,0.3);
+      border-radius: 20px;
+      padding: 22px 30px;
+      max-width: 520px; width: 90%;
+      color: #e2f4ff;
+      text-align: center;
+      z-index: 200;
+      opacity: 0;
+      transition: opacity .4s, transform .4s;
+      pointer-events: none;
+      box-shadow: 0 0 40px rgba(0,100,200,0.3);
+    }
+    #quote-popup.show {
+      opacity: 1; transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+    #quote-popup .quote-icon { font-size: 28px; margin-bottom: 8px; }
+    #quote-popup .quote-text { font-size: 15px; line-height: 1.7; font-style: italic; color: #bde8ff; }
+    #quote-popup .quote-author { font-size: 12px; margin-top: 10px; color: #7dd3fc; letter-spacing: 1px; }
+    #quote-popup .close-btn {
+      position: absolute; top: 10px; right: 14px;
+      background: none; border: none; color: #7dd3fc;
+      font-size: 18px; cursor: pointer; padding: 4px;
+    }
+
+    /* ── 하단 힌트 ── */
+    #hint {
+      position: fixed; bottom: 16px; right: 20px;
+      font-size: 11px; color: rgba(150,210,255,0.5);
+      letter-spacing: 1px;
+    }
+
+    /* ── 로딩 오버레이 ── */
+    #loading {
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at center, #001830 0%, #000610 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 9999; color: #7dd3fc;
+      transition: opacity 1s;
+    }
+    #loading .fish-spin { font-size: 52px; animation: spin 2s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading p { margin-top: 20px; font-size: 14px; letter-spacing: 3px; color: #94c8e8; }
+    #loading .bar-wrap {
+      width: 200px; height: 3px; background: rgba(255,255,255,0.1);
+      border-radius: 2px; margin-top: 20px; overflow: hidden;
+    }
+    #loading .bar { height: 100%; background: #38bdf8; border-radius: 2px; animation: load 2.5s ease-out forwards; }
+    @keyframes load { from { width: 0 } to { width: 100% } }
+
+    /* ── 물결 오버레이 ── */
+    #water-overlay {
+      position: fixed; inset: 0; pointer-events: none; z-index: 50;
+      background: linear-gradient(180deg,
+        rgba(120, 40, 100, 0.2) 0%,
+        rgba(60, 20, 80, 0.12) 10%,
+        transparent 30%,
+        transparent 70%,
+        rgba(0,20,60,0.25) 100%);
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- 로딩 -->
+<div id="loading">
+  <div class="fish-spin">🐠</div>
+  <p>수족관을 준비 중...</p>
+  <div class="bar-wrap"><div class="bar"></div></div>
+</div>
+
+<!-- 조명 패널 -->
+<div id="light-panel">
+  <h3>💡 조명 설정</h3>
+  <div class="slider-row">
+    <label><span>밝기</span><span id="bright-val">70%</span></label>
+    <input type="range" id="brightness" min="0" max="100" value="70">
+  </div>
+  <div class="slider-row">
+    <label><span>수심 안개</span><span id="fog-val">40%</span></label>
+    <input type="range" id="fog-range" min="0" max="100" value="40">
+  </div>
+  <div class="slider-row">
+    <label><span>광선 각도</span><span id="angle-val">0°</span></label>
+    <input type="range" id="light-angle" min="-60" max="60" value="0">
+  </div>
+  <div style="margin-top:10px;">
+    <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:6px;">조명 색상</label>
+    <div id="color-row">
+      <div class="color-btn active" data-color="#b8e4ff" style="background:#b8e4ff;" title="자연광"></div>
+      <div class="color-btn" data-color="#ff9f4a" style="background:#ff9f4a;" title="석양"></div>
+      <div class="color-btn" data-color="#7b4fff" style="background:#7b4fff;" title="자외선"></div>
+      <div class="color-btn" data-color="#40ffe0" style="background:#40ffe0;" title="네온"></div>
+      <div class="color-btn" data-color="#ff4466" style="background:#ff4466;" title="루비"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 명언 팝업 -->
+<div id="quote-popup">
+  <button class="close-btn" onclick="closeQuote()">✕</button>
+  <div class="quote-icon" id="quote-icon">🐟</div>
+  <div class="quote-text" id="quote-text"></div>
+  <div class="quote-author" id="quote-author"></div>
+</div>
+
+<!-- 물결 오버레이 -->
+<div id="water-overlay"></div>
+
+<!-- 힌트 -->
+<div id="hint">오브젝트를 클릭하면 명언이 나타납니다</div>
+
+<!-- Three.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  AQUA GARDEN 2026 — 3D Digital Aquarium (Claude Edition)
+// ═══════════════════════════════════════════════════════
+
+// ── 명언 데이터 ──────────────────────────────────────────
+const QUOTES = {
+  fish: [
+    { icon:"🐟", text:"\"많은 사람들이 평생을 낚시를 하면서도, 그들이 추구하는 것이 물고기가 아니라는 것을 깨닫지 못한다.\"", author:"— 헨리 데이비드 소로우" },
+    { icon:"🐠", text:"\"물고기에게 나무를 오르라고 하면, 물고기는 평생 자신이 바보라고 믿으며 살아갈 것이다.\"", author:"— 알베르트 아인슈타인" },
+    { icon:"🐡", text:"\"강물을 거슬러 오르는 물고기만이 강의 깊이를 안다.\"", author:"— 작자 미상" },
+    { icon:"🦈", text:"\"바다는 두려움의 대상이 아니라, 경이의 대상이다.\"", author:"— 자크 쿠스토" },
+    { icon:"🐟", text:"\"물은 모든 것을 품되, 아무것도 붙잡지 않는다.\"", author:"— 노자" },
+  ],
+  plant: [
+    { icon:"🌿", text:"\"자연은 책이다. 모든 페이지에 진리가 적혀 있다.\"", author:"— 요한 볼프강 폰 괴테" },
+    { icon:"🍃", text:"\"풀잎 하나에도 기적이 있다.\"", author:"— 월트 휘트먼" },
+    { icon:"🌱", text:"\"땅에는 숨겨진 지혜가 있다. 우리가 걷는 곳마다.\"", author:"— 루미" },
+    { icon:"🌿", text:"\"식물은 침묵 속에서 가장 큰 소리를 낸다.\"", author:"— 작자 미상" },
+  ],
+  rock: [
+    { icon:"🪨", text:"\"산을 움직이는 자는 작은 돌을 옮기는 것부터 시작한다.\"", author:"— 공자" },
+    { icon:"💎", text:"\"다이아몬드는 압력을 견뎌낸 탄소에 불과하다.\"", author:"— 작자 미상" },
+    { icon:"🗿", text:"\"바위는 폭풍을 기억하지 않는다. 다만 견뎌낼 뿐이다.\"", author:"— 마르쿠스 아우렐리우스" },
+  ],
+  wood: [
+    { icon:"🪵", text:"\"나무는 폭풍을 만나야 뿌리를 더 깊이 내린다.\"", author:"— 돌리 파튼" },
+    { icon:"🌲", text:"\"나무를 심기에 가장 좋은 때는 20년 전이었다. 그 다음으로 좋은 때는 바로 지금이다.\"", author:"— 중국 속담" },
+    { icon:"🪵", text:"\"뿌리 깊은 나무는 바람에 흔들리지 않는다.\"", author:"— 용비어천가" },
+  ],
+  bubble: [
+    { icon:"🫧", text:"\"숨을 쉰다는 것, 그것이 이미 기적이다.\"", author:"— 틱낫한" },
+    { icon:"💫", text:"\"가장 단순한 것들이 가장 깊은 진리를 담는다.\"", author:"— 오쇼" },
+  ],
+};
+
+// ── 전역 상태 ────────────────────────────────────────────
+let scene, camera, renderer, clock;
+let fishes = [], plants = [], bubbles = [], rays = [];
+let floatingParticles = [];
+let mainLight, ambientLight, rimLight, backLight;
+let raycaster, mouse;
+let clickables = [];
+let schoolCenters = {};
+
+// ── 초기화 ──────────────────────────────────────────────
+function init() {
+  scene = new THREE.Scene();
+  clock  = new THREE.Clock();
+
+  scene.background = new THREE.Color(0x0a0a1a);
+  scene.fog = new THREE.FogExp2(0x081828, 0.008);
+
+  camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 200);
+  camera.position.set(0, 1.5, 16);
+  camera.lookAt(0, -0.5, 0);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
+  document.body.appendChild(renderer.domElement);
+
+  raycaster = new THREE.Raycaster();
+  mouse     = new THREE.Vector2();
+
+  buildBackground();
+  buildScene();
+  buildLights();
+  addFloatingParticles();
+  addEvents();
+
+  setTimeout(function() {
+    document.getElementById('loading').style.opacity = '0';
+    setTimeout(function() { document.getElementById('loading').style.display = 'none'; }, 1000);
+  }, 2500);
+
+  animate();
+}
+
+// ── 배경 그라데이션 ─────────────────────────────────────
+function buildBackground() {
+  var geo = new THREE.PlaneGeometry(80, 50, 1, 20);
+  var colors = [];
+  var pos = geo.attributes.position;
+
+  for (var i = 0; i < pos.count; i++) {
+    var y = pos.getY(i);
+    var t = (y + 25) / 50;
+    var r, g, b;
+    if (t < 0.5) {
+      var f = t / 0.5;
+      r = THREE.MathUtils.lerp(0.02, 0.04, f);
+      g = THREE.MathUtils.lerp(0.04, 0.10, f);
+      b = THREE.MathUtils.lerp(0.08, 0.20, f);
+    } else {
+      var f = (t - 0.5) / 0.5;
+      r = THREE.MathUtils.lerp(0.04, 0.40, f);
+      g = THREE.MathUtils.lerp(0.10, 0.10, f);
+      b = THREE.MathUtils.lerp(0.20, 0.35, f);
+    }
+    colors.push(r, g, b);
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  var mat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false });
+  var bg = new THREE.Mesh(geo, mat);
+  bg.position.set(0, 5, -15);
+  scene.add(bg);
+}
+
+// ── 씬 구성 ─────────────────────────────────────────────
+function buildScene() {
+  addSubstrate();
+  addWaterSurface();
+  addRocks();
+  addDriftwood();
+  addBackgroundPlants();
+  addMidgroundPlants();
+  addForegroundPlants();
+  addRedPlants();
+  addMoss();
+  addFishes();
+  addBubbles();
+  addGodRays();
+}
+
+// ── 바닥 (아쿠아소일) ───────────────────────────────────
+function addSubstrate() {
+  var geo = new THREE.PlaneGeometry(50, 30, 60, 30);
+  var pos = geo.attributes.position;
+
+  for (var i = 0; i < pos.count; i++) {
+    var x = pos.getX(i);
+    var y = pos.getY(i);
+    var slopeHeight = Math.max(0, (-y - 5) * 0.12);
+    var noise = (Math.random() - 0.5) * 0.15;
+    var mound1 = Math.exp(-((x + 5) * (x + 5) + (y + 2) * (y + 2)) / 8) * 0.6;
+    var mound2 = Math.exp(-((x - 4) * (x - 4) + (y + 3) * (y + 3)) / 6) * 0.4;
+    pos.setZ(i, noise + slopeHeight + mound1 + mound2);
+  }
+  geo.computeVertexNormals();
+
+  var mat = new THREE.MeshStandardMaterial({ color: 0x1a1208, roughness: 1, metalness: 0 });
+  var substrate = new THREE.Mesh(geo, mat);
+  substrate.rotation.x = -Math.PI / 2;
+  substrate.position.y = -4;
+  substrate.receiveShadow = true;
+  scene.add(substrate);
+
+  // 자갈 파티클
+  var pGeo = new THREE.SphereGeometry(0.04, 4, 4);
+  for (var i = 0; i < 400; i++) {
+    var m = new THREE.MeshStandardMaterial({
+      color: new THREE.Color().setHSL(0.08, 0.2, 0.05 + Math.random() * 0.08), roughness: 1
+    });
+    var p = new THREE.Mesh(pGeo, m);
+    p.position.set((Math.random() - 0.5) * 40, -3.9 + Math.random() * 0.1, (Math.random() - 0.5) * 12);
+    scene.add(p);
+  }
+}
+
+// ── 수면 ────────────────────────────────────────────────
+function addWaterSurface() {
+  var geo = new THREE.PlaneGeometry(60, 40, 80, 60);
+  var mat = new THREE.MeshStandardMaterial({
+    color: 0x006fa8, transparent: true, opacity: 0.3,
+    roughness: 0.1, metalness: 0.3, side: THREE.DoubleSide,
+  });
+  var water = new THREE.Mesh(geo, mat);
+  water.rotation.x = -Math.PI / 2;
+  water.position.y = 6;
+  water.userData.waveGeo = geo;
+  scene.add(water);
+  scene.userData.water = water;
+}
+
+// ── 바위 ────────────────────────────────────────────────
+function addRocks() {
+  var rockConfigs = [
+    { pos: [-4, -3.5, -2], scale: [2.5, 1.8, 2.0], color: 0x3a3f45, rot: [0.1, 0.3, 0] },
+    { pos: [-5.5, -3.8, -1.5], scale: [1.8, 1.2, 1.4], color: 0x2e3338, rot: [0, 0.5, 0.1] },
+    { pos: [-3, -3.8, -1], scale: [1.3, 0.9, 1.1], color: 0x44494f, rot: [0.2, 0.1, 0] },
+    { pos: [5, -3.7, -2.5], scale: [1.5, 1.0, 1.3], color: 0x353a40, rot: [0, 0.4, 0.1] },
+    { pos: [6, -3.8, -1.8], scale: [0.8, 0.6, 0.7], color: 0x3d4248, rot: [0.1, 0.2, 0] },
+    { pos: [-7, -3.9, 1], scale: [0.9, 0.6, 0.8], color: 0x2a2f35, rot: [0, 0, 0.1] },
+    { pos: [3, -3.9, -1], scale: [0.7, 0.5, 0.6], color: 0x3f4450, rot: [0, 0.3, 0] },
+  ];
+
+  rockConfigs.forEach(function(cfg, i) {
+    var geo = new THREE.IcosahedronGeometry(1, 1);
+    var pos = geo.attributes.position;
+    for (var j = 0; j < pos.count; j++) {
+      pos.setX(j, pos.getX(j) + (Math.random() - 0.5) * 0.25);
+      pos.setY(j, pos.getY(j) + (Math.random() - 0.5) * 0.12);
+      pos.setZ(j, pos.getZ(j) + (Math.random() - 0.5) * 0.25);
+    }
+    geo.computeVertexNormals();
+
+    var mat = new THREE.MeshStandardMaterial({ color: cfg.color, roughness: 0.92, metalness: 0.05 });
+    var rock = new THREE.Mesh(geo, mat);
+    rock.position.set(cfg.pos[0], cfg.pos[1], cfg.pos[2]);
+    rock.scale.set(cfg.scale[0], cfg.scale[1], cfg.scale[2]);
+    rock.rotation.set(cfg.rot[0], cfg.rot[1], cfg.rot[2]);
+    rock.castShadow = true;
+    rock.receiveShadow = true;
+    rock.userData = { clickable: true, type: 'rock', quote: QUOTES.rock[i % QUOTES.rock.length] };
+    scene.add(rock);
+    clickables.push(rock);
+
+    // 이끼 오버레이
+    var mossGeo = new THREE.IcosahedronGeometry(1.04, 1);
+    var mPos = mossGeo.attributes.position;
+    for (var j = 0; j < mPos.count; j++) {
+      mPos.setX(j, mPos.getX(j) + (Math.random() - 0.5) * 0.1);
+      mPos.setY(j, mPos.getY(j) + (Math.random() - 0.5) * 0.05);
+    }
+    mossGeo.computeVertexNormals();
+    var mossMat = new THREE.MeshStandardMaterial({ color: 0x2d5a1b, roughness: 1, transparent: true, opacity: 0.5 });
+    var moss = new THREE.Mesh(mossGeo, mossMat);
+    moss.position.set(cfg.pos[0], cfg.pos[1], cfg.pos[2]);
+    moss.scale.set(cfg.scale[0], cfg.scale[1], cfg.scale[2]);
+    moss.rotation.set(cfg.rot[0], cfg.rot[1], cfg.rot[2]);
+    scene.add(moss);
+  });
+}
+
+// ── 유목 (재귀 분기) ────────────────────────────────────
+function addDriftwood() {
+  function makeBranch(startPos, direction, length, radius, depth, maxDepth) {
+    if (depth > maxDepth || radius < 0.04) return;
+
+    var segments = 5 + Math.floor(Math.random() * 3);
+    var points = [];
+    var current = startPos.clone();
+    var step = direction.clone().normalize().multiplyScalar(length / segments);
+
+    for (var i = 0; i <= segments; i++) {
+      points.push(current.clone());
+      current.add(step.clone());
+      if (i > 0 && i < segments) {
+        current.x += (Math.random() - 0.5) * 0.3;
+        current.y += (Math.random() - 0.5) * 0.15;
+        current.z += (Math.random() - 0.5) * 0.2;
+      }
+    }
+
+    var path = new THREE.CatmullRomCurve3(points);
+    var geo = new THREE.TubeGeometry(path, segments * 2, radius, 6, false);
+
+    var pos = geo.attributes.position;
+    for (var i = 0; i < pos.count; i++) {
+      pos.setX(i, pos.getX(i) + (Math.random() - 0.5) * radius * 0.3);
+      pos.setZ(i, pos.getZ(i) + (Math.random() - 0.5) * radius * 0.3);
+    }
+    geo.computeVertexNormals();
+
+    var darkness = 0.1 + depth * 0.04;
+    var mat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color().setHSL(0.07, 0.4, 0.12 + darkness), roughness: 1, metalness: 0
+    });
+    var branch = new THREE.Mesh(geo, mat);
+    branch.castShadow = true;
+    branch.userData = { clickable: true, type: 'wood', quote: QUOTES.wood[Math.floor(Math.random() * QUOTES.wood.length)] };
+    scene.add(branch);
+    clickables.push(branch);
+
+    var endPoint = points[points.length - 1];
+    var branchCount = depth < 2 ? 2 + Math.floor(Math.random() * 2) : (Math.random() > 0.4 ? 1 : 0);
+
+    for (var b = 0; b < branchCount; b++) {
+      var newDir = direction.clone();
+      newDir.x += (Math.random() - 0.5) * 1.5;
+      newDir.y += Math.random() * 0.5;
+      newDir.z += (Math.random() - 0.5) * 1.0;
+      newDir.normalize();
+      makeBranch(endPoint, newDir, length * (0.5 + Math.random() * 0.3), radius * (0.5 + Math.random() * 0.2), depth + 1, maxDepth);
+    }
+  }
+
+  // 메인 줄기 3개
+  makeBranch(new THREE.Vector3(-3, -4, -2), new THREE.Vector3(0.3, 1, -0.2), 4, 0.45, 0, 4);
+  makeBranch(new THREE.Vector3(-2, -3.5, -2.5), new THREE.Vector3(1, 0.6, 0.1), 3.5, 0.3, 0, 3);
+  makeBranch(new THREE.Vector3(-1, -2, -2), new THREE.Vector3(1.5, 0.3, 0.3), 3, 0.2, 0, 3);
+}
+
+// ── 배경 수초 (줄기형, 뒤쪽 밀집) ───────────────────────
+function addBackgroundPlants() {
+  var leafShape = new THREE.Shape();
+  leafShape.moveTo(0, 0);
+  leafShape.quadraticCurveTo(0.06, 0.15, 0.02, 0.3);
+  leafShape.quadraticCurveTo(-0.06, 0.15, 0, 0);
+  var sharedLeafGeo = new THREE.ShapeGeometry(leafShape, 4);
+
+  var backZones = [
+    { z: -5, xMin: -12, xMax: 12, step: 0.5, height: [3, 7] },
+    { z: -4.5, xMin: -11, xMax: 11, step: 0.6, height: [2.5, 5.5] },
+    { z: -4, xMin: -10, xMax: 10, step: 0.7, height: [2, 4.5] },
+  ];
+
+  backZones.forEach(function(zone) {
+    for (var x = zone.xMin; x <= zone.xMax; x += zone.step + Math.random() * 0.3) {
+      var stemHeight = zone.height[0] + Math.random() * (zone.height[1] - zone.height[0]);
+      var stemX = x + (Math.random() - 0.5) * 0.3;
+      var stemZ = zone.z + (Math.random() - 0.5) * 0.5;
+
+      // 줄기
+      var stemGeo = new THREE.CylinderGeometry(0.02, 0.03, stemHeight, 4);
+      var stemMat = new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(0.3, 0.5, 0.13), roughness: 0.9 });
+      var stem = new THREE.Mesh(stemGeo, stemMat);
+      stem.position.set(stemX, -4 + stemHeight / 2, stemZ);
+      scene.add(stem);
+
+      // 잎 쌍
+      var leafCount = Math.floor(stemHeight / 0.5);
+      for (var l = 0; l < leafCount; l++) {
+        var ly = -4 + 0.3 + (l / leafCount) * (stemHeight - 0.5);
+        for (var side = 0; side < 2; side++) {
+          var hue = 0.28 + (Math.random() - 0.5) * 0.06;
+          var leafColor = new THREE.Color().setHSL(hue, 0.6 + Math.random() * 0.2, 0.15 + Math.random() * 0.15);
+          var leafMat = new THREE.MeshStandardMaterial({
+            color: leafColor, side: THREE.DoubleSide, roughness: 0.7, transparent: true, opacity: 0.85
+          });
+          var leaf = new THREE.Mesh(sharedLeafGeo, leafMat);
+          leaf.position.set(stemX, ly, stemZ);
+          leaf.rotation.set(-0.3 - Math.random() * 0.3, l * 2.4 + side * Math.PI, (Math.random() - 0.5) * 0.2);
+          leaf.scale.set(0.8 + Math.random() * 0.6, 0.8 + Math.random() * 0.6, 1);
+          scene.add(leaf);
+        }
+      }
+
+      // 줄기 전체 흔들림 등록 (대표 줄기 메시에 userData 설정)
+      stem.userData = {
+        clickable: true, type: 'plant',
+        quote: QUOTES.plant[Math.floor(Math.random() * QUOTES.plant.length)],
+        waveOffset: Math.random() * Math.PI * 2,
+        waveSpeed: 0.3 + Math.random() * 0.3,
+        waveAmp: 0.015 + Math.random() * 0.015,
+        baseRotY: 0, isStalk: true,
+      };
+      clickables.push(stem);
+      plants.push(stem);
+    }
+  });
+}
+
+// ── 중경 수초 (부시형) ──────────────────────────────────
+function addMidgroundPlants() {
+  var positions = [
+    [-7, -1, 15, 0.8, 0.32],
+    [-5, -1.5, 12, 0.9, 0.30],
+    [-2, -1, 10, 0.7, 0.33],
+    [1, -1.5, 12, 0.85, 0.31],
+    [4, -1, 14, 0.75, 0.29],
+    [7, -1.5, 10, 0.8, 0.32],
+    [-8, 0.5, 8, 0.7, 0.30],
+    [6, 0, 8, 0.65, 0.33],
+  ];
+
+  positions.forEach(function(cfg) {
+    var gx = cfg[0], gz = cfg[1], cnt = cfg[2], hm = cfg[3], hue = cfg[4];
+    for (var i = 0; i < cnt; i++) {
+      var x = gx + (Math.random() - 0.5) * 2;
+      var z = gz + (Math.random() - 0.5) * 1.5;
+      var height = (1 + Math.random() * 1.5) * hm;
+
+      var leafCount = 4 + Math.floor(Math.random() * 5);
+      for (var l = 0; l < leafCount; l++) {
+        var lh = height * (0.6 + Math.random() * 0.4);
+        var lw = 0.15 + Math.random() * 0.2;
+
+        var shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        shape.quadraticCurveTo(lw, lh * 0.5, (Math.random() - 0.5) * lw, lh);
+        shape.quadraticCurveTo(-lw, lh * 0.5, 0, 0);
+
+        var geo = new THREE.ShapeGeometry(shape, 6);
+        var color = new THREE.Color().setHSL(hue + (Math.random() - 0.5) * 0.04, 0.65 + Math.random() * 0.2, 0.15 + Math.random() * 0.18);
+        var mat = new THREE.MeshStandardMaterial({
+          color: color, side: THREE.DoubleSide, roughness: 0.8, transparent: true, opacity: 0.85
+        });
+        var leaf = new THREE.Mesh(geo, mat);
+        leaf.position.set(x + (Math.random() - 0.5) * 0.3, -4, z + (Math.random() - 0.5) * 0.3);
+        leaf.rotation.y = Math.random() * Math.PI * 2;
+        leaf.rotation.x = (Math.random() - 0.5) * 0.3;
+        leaf.userData = {
+          clickable: true, type: 'plant',
+          quote: QUOTES.plant[Math.floor(Math.random() * QUOTES.plant.length)],
+          waveOffset: Math.random() * Math.PI * 2,
+          waveSpeed: 0.4 + Math.random() * 0.4,
+          waveAmp: 0.03 + Math.random() * 0.03,
+          baseRotY: leaf.rotation.y,
+        };
+        scene.add(leaf);
+        clickables.push(leaf);
+        plants.push(leaf);
+      }
+    }
+  });
+}
+
+// ── 전경 수초 (잔디형) ──────────────────────────────────
+function addForegroundPlants() {
+  for (var x = -10; x <= 10; x += 0.3) {
+    for (var z = 2; z <= 5; z += 0.35) {
+      if (Math.random() > 0.65) continue;
+
+      var bladeCount = 3 + Math.floor(Math.random() * 3);
+      for (var b = 0; b < bladeCount; b++) {
+        var h = 0.2 + Math.random() * 0.5;
+        var w = 0.02 + Math.random() * 0.03;
+
+        var shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        shape.lineTo(w, 0);
+        shape.quadraticCurveTo(w * 0.5, h * 0.7, (Math.random() - 0.5) * w * 2, h);
+        shape.quadraticCurveTo(-w * 0.5, h * 0.7, 0, 0);
+
+        var geo = new THREE.ShapeGeometry(shape, 3);
+        var color = new THREE.Color().setHSL(0.30 + Math.random() * 0.06, 0.7, 0.16 + Math.random() * 0.12);
+        var mat = new THREE.MeshStandardMaterial({ color: color, side: THREE.DoubleSide, roughness: 0.8 });
+        var blade = new THREE.Mesh(geo, mat);
+        blade.position.set(x + (Math.random() - 0.5) * 0.2, -4, z + (Math.random() - 0.5) * 0.2);
+        blade.rotation.y = Math.random() * Math.PI * 2;
+        blade.userData = {
+          waveOffset: Math.random() * Math.PI * 2,
+          waveSpeed: 0.6 + Math.random() * 0.4,
+          waveAmp: 0.012 + Math.random() * 0.012,
+          baseRotY: blade.rotation.y,
+        };
+        scene.add(blade);
+        plants.push(blade);
+      }
+    }
+  }
+}
+
+// ── 붉은 수초 ───────────────────────────────────────────
+function addRedPlants() {
+  var redZones = [
+    { cx: 6, cz: -2, spread: 3, count: 20 },
+    { cx: 8, cz: -3, spread: 2, count: 15 },
+    { cx: -6, cz: -3, spread: 1.5, count: 8 },
+    { cx: 2, cz: -2, spread: 1, count: 5 },
+  ];
+
+  redZones.forEach(function(zone) {
+    for (var i = 0; i < zone.count; i++) {
+      var x = zone.cx + (Math.random() - 0.5) * zone.spread;
+      var z = zone.cz + (Math.random() - 0.5) * zone.spread;
+      var height = 1.5 + Math.random() * 3;
+
+      var leafCount = 3 + Math.floor(Math.random() * 4);
+      for (var l = 0; l < leafCount; l++) {
+        var lh = height * (0.5 + Math.random() * 0.5);
+        var lw = 0.1 + Math.random() * 0.12;
+
+        var shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        shape.quadraticCurveTo(lw, lh * 0.5, (Math.random() - 0.5) * lw, lh);
+        shape.quadraticCurveTo(-lw, lh * 0.5, 0, 0);
+
+        var geo = new THREE.ShapeGeometry(shape, 6);
+        var hue = 0.95 + Math.random() * 0.08;
+        var color = new THREE.Color().setHSL(hue % 1, 0.6 + Math.random() * 0.2, 0.15 + Math.random() * 0.15);
+        var mat = new THREE.MeshStandardMaterial({
+          color: color, side: THREE.DoubleSide, roughness: 0.7, transparent: true, opacity: 0.85
+        });
+        var leaf = new THREE.Mesh(geo, mat);
+        leaf.position.set(x + (Math.random() - 0.5) * 0.3, -4, z + (Math.random() - 0.5) * 0.3);
+        leaf.rotation.y = Math.random() * Math.PI * 2;
+        leaf.userData = {
+          clickable: true, type: 'plant',
+          quote: QUOTES.plant[Math.floor(Math.random() * QUOTES.plant.length)],
+          waveOffset: Math.random() * Math.PI * 2,
+          waveSpeed: 0.35 + Math.random() * 0.4,
+          waveAmp: 0.04 + Math.random() * 0.04,
+          baseRotY: leaf.rotation.y,
+        };
+        scene.add(leaf);
+        clickables.push(leaf);
+        plants.push(leaf);
+      }
+    }
+  });
+}
+
+// ── 이끼 (유목/바위 위) ─────────────────────────────────
+function addMoss() {
+  var mossPositions = [
+    [-3, -2.5, -2], [-2, -1.5, -2], [-1, -1, -2.2],
+    [0, -0.5, -1.8], [-2.5, -3, -2.3], [1, -1.5, -1.5],
+    [-4, -3, -1.5], [5, -3.2, -2],
+  ];
+
+  var mossGeo = new THREE.SphereGeometry(1, 4, 4);
+  mossPositions.forEach(function(pos) {
+    var count = 12 + Math.floor(Math.random() * 12);
+    for (var i = 0; i < count; i++) {
+      var size = 0.03 + Math.random() * 0.06;
+      var mat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color().setHSL(0.3 + Math.random() * 0.05, 0.7, 0.10 + Math.random() * 0.1), roughness: 1
+      });
+      var m = new THREE.Mesh(mossGeo, mat);
+      m.scale.setScalar(size);
+      m.position.set(pos[0] + (Math.random() - 0.5) * 0.6, pos[1] + (Math.random() - 0.5) * 0.4, pos[2] + (Math.random() - 0.5) * 0.4);
+      scene.add(m);
+    }
+  });
+}
+
+// ── 물고기 ──────────────────────────────────────────────
+function addFishes() {
+  fishes = [];
+  schoolCenters = {
+    tetra: { pos: new THREE.Vector3(3, 0, 1), target: new THREE.Vector3((Math.random() - 0.5) * 12, Math.random() * 2, (Math.random() - 0.5) * 5) },
+    guppy: { pos: new THREE.Vector3(-3, -1, 2), target: new THREE.Vector3((Math.random() - 0.5) * 12, Math.random() * 2, (Math.random() - 0.5) * 5) },
+    rummy: { pos: new THREE.Vector3(0, 0.5, 0), target: new THREE.Vector3((Math.random() - 0.5) * 12, Math.random() * 2, (Math.random() - 0.5) * 5) },
+  };
+
+  for (var i = 0; i < 2; i++) createFish('betta', i);
+  for (var i = 0; i < 3; i++) createFish('angel', i);
+  for (var i = 0; i < 8; i++) createFish('tetra', i);
+  for (var i = 0; i < 6; i++) createFish('guppy', i);
+  for (var i = 0; i < 3; i++) createFish('rummy', i);
+}
+
+function createFish(type, idx) {
+  var group = new THREE.Group();
+  var bodyColor, finColor, bodyScale, tailLength, speed;
+
+  if (type === 'betta') {
+    bodyColor = new THREE.Color(0xcc2200);
+    finColor  = new THREE.Color(0xff4488);
+    bodyScale = { x: 0.55, y: 0.32, z: 0.2 };
+    tailLength = 1.1;
+    speed = 0.015;
+  } else if (type === 'angel') {
+    bodyColor = new THREE.Color(0xddccaa);
+    finColor  = new THREE.Color(0x888866);
+    bodyScale = { x: 0.35, y: 0.55, z: 0.10 };
+    tailLength = 0.7;
+    speed = 0.018;
+  } else if (type === 'tetra') {
+    bodyColor = new THREE.Color(0x2266ff);
+    finColor  = new THREE.Color(0x44aaff);
+    bodyScale = { x: 0.22, y: 0.13, z: 0.10 };
+    tailLength = 0.4;
+    speed = 0.035;
+  } else if (type === 'guppy') {
+    var hue = Math.random();
+    bodyColor = new THREE.Color().setHSL(hue, 0.8, 0.5);
+    finColor  = new THREE.Color().setHSL(hue + 0.1, 0.9, 0.6);
+    bodyScale = { x: 0.28, y: 0.16, z: 0.12 };
+    tailLength = 0.55;
+    speed = 0.03;
+  } else { // rummy
+    bodyColor = new THREE.Color(0xccccbb);
+    finColor  = new THREE.Color(0xddddcc);
+    bodyScale = { x: 0.25, y: 0.14, z: 0.10 };
+    tailLength = 0.4;
+    speed = 0.032;
+  }
+
+  // 몸통
+  var bodyGeo = new THREE.SphereGeometry(1, 12, 8);
+  var bodyMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.4, metalness: 0.1 });
+  var body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.scale.set(bodyScale.x, bodyScale.y, bodyScale.z);
+  group.add(body);
+
+  // 엔젤피시 줄무늬
+  if (type === 'angel') {
+    [0, 0.15, -0.15].forEach(function(x) {
+      var sg = new THREE.BoxGeometry(0.05, 0.6, 0.12);
+      var sm = new THREE.MeshStandardMaterial({ color: 0x444400, roughness: 0.8 });
+      var sv = new THREE.Mesh(sg, sm);
+      sv.position.x = x;
+      group.add(sv);
+    });
+  }
+
+  // 러미노즈테트라 빨간 코
+  if (type === 'rummy') {
+    var noseGeo = new THREE.SphereGeometry(0.08, 8, 8);
+    var noseMat = new THREE.MeshStandardMaterial({ color: 0xff2200, roughness: 0.5 });
+    var nose = new THREE.Mesh(noseGeo, noseMat);
+    nose.position.set(bodyScale.x * 0.9, 0, 0);
+    group.add(nose);
+  }
+
+  // 네온테트라 형광 줄
+  if (type === 'tetra') {
+    var stripeGeo = new THREE.BoxGeometry(bodyScale.x * 1.6, 0.03, bodyScale.z * 0.5);
+    var stripeMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x004466, roughness: 0.3 });
+    var stripe = new THREE.Mesh(stripeGeo, stripeMat);
+    stripe.position.set(0, bodyScale.y * 0.1, 0);
+    group.add(stripe);
+  }
+
+  // 눈
+  var eyeGeo = new THREE.SphereGeometry(0.06, 8, 8);
+  var eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+  var eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+  [-0.07, 0.07].forEach(function(ez) {
+    var ew = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), eyeWhiteMat);
+    ew.position.set(bodyScale.x * 0.7, bodyScale.y * 0.3, ez * (1 / bodyScale.z) * 0.5);
+    group.add(ew);
+    var ep = new THREE.Mesh(eyeGeo, eyeMat);
+    ep.position.set(bodyScale.x * 0.75, bodyScale.y * 0.3, ez * (1 / bodyScale.z) * 0.5);
+    group.add(ep);
+  });
+
+  // 꼬리지느러미
+  var tailShape = new THREE.Shape();
+  tailShape.moveTo(0, 0);
+  tailShape.lineTo(-tailLength, tailLength * 0.6);
+  tailShape.lineTo(-tailLength * 0.8, 0);
+  tailShape.lineTo(-tailLength, -tailLength * 0.6);
+  tailShape.closePath();
+  var tailGeo = new THREE.ShapeGeometry(tailShape, 8);
+  var tailMat = new THREE.MeshStandardMaterial({ color: finColor, side: THREE.DoubleSide, transparent: true, opacity: 0.8, roughness: 0.6 });
+  var tail = new THREE.Mesh(tailGeo, tailMat);
+  tail.position.x = -bodyScale.x;
+  group.add(tail);
+
+  // 등지느러미
+  var dorsShape = new THREE.Shape();
+  dorsShape.moveTo(-0.1, 0);
+  dorsShape.quadraticCurveTo(0.05, bodyScale.y * 1.6, 0.2, 0);
+  dorsShape.closePath();
+  var dorsGeo = new THREE.ShapeGeometry(dorsShape);
+  var dorsMat = new THREE.MeshStandardMaterial({ color: finColor, side: THREE.DoubleSide, transparent: true, opacity: 0.75 });
+  var dorsalFin = new THREE.Mesh(dorsGeo, dorsMat);
+  dorsalFin.position.set(0, bodyScale.y, 0);
+  group.add(dorsalFin);
+
+  // 가슴지느러미
+  var pectShape = new THREE.Shape();
+  pectShape.moveTo(0, 0);
+  pectShape.quadraticCurveTo(0.15, -0.15, 0.1, -0.3);
+  pectShape.quadraticCurveTo(0, -0.1, 0, 0);
+  var pectGeo = new THREE.ShapeGeometry(pectShape, 6);
+  [1, -1].forEach(function(side) {
+    var pMat = new THREE.MeshStandardMaterial({ color: finColor, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+    var pect = new THREE.Mesh(pectGeo, pMat);
+    pect.position.set(0, -bodyScale.y * 0.3, side * bodyScale.z);
+    pect.rotation.y = side * 0.5;
+    group.add(pect);
+  });
+
+  // 초기 위치
+  group.position.set((Math.random() - 0.5) * 18, -1 + (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 8);
+  group.rotation.y = Math.random() * Math.PI * 2;
+
+  var individualTarget = new THREE.Vector3(
+    (Math.random() - 0.5) * 16, -0.5 + (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 7
+  );
+
+  group.userData = {
+    clickable: true,
+    type: 'fish',
+    fishType: type,
+    speed: speed,
+    target: individualTarget.clone(),
+    individualTarget: individualTarget,
+    tailPhase: Math.random() * Math.PI * 2,
+    tailSpeed: 3 + Math.random() * 2,
+    tail: tail,
+    dorsalFin: dorsalFin,
+    quote: QUOTES.fish[Math.floor(Math.random() * QUOTES.fish.length)],
+  };
+
+  scene.add(group);
+  clickables.push(group);
+  fishes.push(group);
+}
+
+// ── 기포 ────────────────────────────────────────────────
+function addBubbles() {
+  bubbles = [];
+  var bubbleGeo = new THREE.SphereGeometry(1, 8, 8);
+  for (var i = 0; i < 60; i++) spawnBubble(bubbleGeo, true);
+  scene.userData.bubbleGeo = bubbleGeo;
+}
+
+function spawnBubble(geo, initial) {
+  var r = 0.03 + Math.random() * 0.07;
+  var mat = new THREE.MeshStandardMaterial({
+    color: 0xaaddff, transparent: true, opacity: 0.25 + Math.random() * 0.2, roughness: 0.0, metalness: 0.5,
+  });
+  var b = new THREE.Mesh(geo || scene.userData.bubbleGeo, mat);
+  var sx = (Math.random() - 0.5) * 20;
+  var sz = (Math.random() - 0.5) * 8;
+  var sy = initial ? (Math.random() - 0.5) * 10 : -4;
+  b.position.set(sx, sy, sz);
+  b.scale.setScalar(r);
+  b.userData = {
+    clickable: true, type: 'bubble',
+    quote: QUOTES.bubble[Math.floor(Math.random() * QUOTES.bubble.length)],
+    vy: 0.008 + Math.random() * 0.015,
+    wobble: Math.random() * Math.PI * 2,
+    wobbleAmp: 0.002 + Math.random() * 0.004,
+    sx: sx, sz: sz,
+  };
+  scene.add(b);
+  bubbles.push(b);
+  clickables.push(b);
+  return b;
+}
+
+// ── 빛줄기 (God Rays) ──────────────────────────────────
+function addGodRays() {
+  rays = [];
+  for (var i = 0; i < 18; i++) {
+    var topWidth = 0.3 + Math.random() * 0.5;
+    var bottomWidth = 0.05 + Math.random() * 0.1;
+    var height = 12 + Math.random() * 4;
+
+    var geo = new THREE.CylinderGeometry(bottomWidth, topWidth, height, 6, 1, true);
+    var mat = new THREE.MeshBasicMaterial({
+      color: 0xaaccff, transparent: true, opacity: 0.015 + Math.random() * 0.025,
+      side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending,
+    });
+    var ray = new THREE.Mesh(geo, mat);
+    ray.position.set((Math.random() - 0.5) * 25, 1 + Math.random() * 2, (Math.random() - 0.5) * 10);
+    ray.rotation.z = (Math.random() - 0.5) * 0.2;
+    ray.rotation.x = (Math.random() - 0.5) * 0.1;
+    ray.userData = {
+      baseOpacity: mat.opacity,
+      phase: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.3 + Math.random() * 0.5,
+      driftSpeed: (Math.random() - 0.5) * 0.002,
+      baseX: ray.position.x,
+    };
+    scene.add(ray);
+    rays.push(ray);
+  }
+}
+
+// ── 부유 입자 ───────────────────────────────────────────
+function addFloatingParticles() {
+  floatingParticles = [];
+  var geo = new THREE.SphereGeometry(1, 3, 3);
+
+  for (var i = 0; i < 150; i++) {
+    var size = 0.01 + Math.random() * 0.02;
+    var mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color().setHSL(0.1, 0.2, 0.4 + Math.random() * 0.3),
+      transparent: true, opacity: 0.12 + Math.random() * 0.12, depthWrite: false,
+    });
+    var p = new THREE.Mesh(geo, mat);
+    p.scale.setScalar(size);
+    p.position.set((Math.random() - 0.5) * 30, -4 + Math.random() * 10, (Math.random() - 0.5) * 12);
+    p.userData = {
+      vx: (Math.random() - 0.5) * 0.002,
+      vy: (Math.random() - 0.5) * 0.001,
+      vz: (Math.random() - 0.5) * 0.002,
+      phase: Math.random() * Math.PI * 2,
+    };
+    scene.add(p);
+    floatingParticles.push(p);
+  }
+}
+
+// ── 조명 ────────────────────────────────────────────────
+function buildLights() {
+  ambientLight = new THREE.AmbientLight(0x1a1040, 0.5);
+  scene.add(ambientLight);
+
+  mainLight = new THREE.DirectionalLight(0xccddff, 1.3);
+  mainLight.position.set(0, 15, 5);
+  mainLight.castShadow = true;
+  mainLight.shadow.mapSize.set(2048, 2048);
+  mainLight.shadow.camera.near = 0.5;
+  mainLight.shadow.camera.far = 50;
+  mainLight.shadow.camera.left = -20;
+  mainLight.shadow.camera.right = 20;
+  mainLight.shadow.camera.top = 15;
+  mainLight.shadow.camera.bottom = -15;
+  scene.add(mainLight);
+
+  rimLight = new THREE.PointLight(0x0055aa, 0.7, 30);
+  rimLight.position.set(-10, 3, 0);
+  scene.add(rimLight);
+
+  backLight = new THREE.PointLight(0x220044, 0.4, 25);
+  backLight.position.set(0, -2, -8);
+  scene.add(backLight);
+
+  // 보라 악센트 (수면 위)
+  var topAccent = new THREE.PointLight(0x8844aa, 0.3, 20);
+  topAccent.position.set(0, 8, -5);
+  scene.add(topAccent);
+}
+
+// ── 이벤트 ──────────────────────────────────────────────
+function addEvents() {
+  // 밝기
+  document.getElementById('brightness').addEventListener('input', function(e) {
+    var v = e.target.value / 100;
+    document.getElementById('bright-val').textContent = e.target.value + '%';
+    mainLight.intensity    = v * 2.0;
+    ambientLight.intensity = v * 0.7;
+    rimLight.intensity     = v * 1.0;
+    renderer.toneMappingExposure = 0.5 + v * 0.9;
+  });
+
+  // 안개
+  document.getElementById('fog-range').addEventListener('input', function(e) {
+    var v = e.target.value / 100;
+    document.getElementById('fog-val').textContent = e.target.value + '%';
+    scene.fog.density = 0.002 + v * 0.02;
+  });
+
+  // 광선 각도
+  document.getElementById('light-angle').addEventListener('input', function(e) {
+    var deg = parseInt(e.target.value);
+    document.getElementById('angle-val').textContent = deg + '°';
+    var rad = deg * Math.PI / 180;
+    mainLight.position.x = Math.sin(rad) * 15;
+    rimLight.position.x  = -Math.sin(rad) * 10;
+  });
+
+  // 색상 버튼
+  document.querySelectorAll('.color-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.color-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      var hex = parseInt(btn.dataset.color.replace('#', ''), 16);
+      mainLight.color.setHex(hex);
+      ambientLight.color.setHex(Math.round(hex * 0.5));
+    });
+  });
+
+  // 클릭 → 명언
+  renderer.domElement.addEventListener('click', onCanvasClick);
+
+  // 호버 → 커서
+  renderer.domElement.addEventListener('mousemove', onCanvasHover);
+
+  // 리사이즈
+  window.addEventListener('resize', function() {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+}
+
+// ── 클릭 핸들러 ─────────────────────────────────────────
+function onCanvasClick(event) {
+  mouse.x = (event.clientX / innerWidth)  *  2 - 1;
+  mouse.y = (event.clientY / innerHeight) * -2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  // 물고기 그룹 우선 체크
+  var fishHit = raycaster.intersectObjects(fishes, true);
+  if (fishHit.length > 0) {
+    var obj = fishHit[0].object;
+    while (obj.parent && !obj.userData.fishType) obj = obj.parent;
+    if (obj.userData.quote) showQuote(obj.userData);
+    return;
+  }
+
+  var hits = raycaster.intersectObjects(clickables, true);
+  if (hits.length > 0) {
+    var obj = hits[0].object;
+    while (obj && !obj.userData.clickable) obj = obj.parent;
+    if (obj && obj.userData.quote) showQuote(obj.userData);
+  }
+}
+
+function onCanvasHover(event) {
+  mouse.x = (event.clientX / innerWidth)  *  2 - 1;
+  mouse.y = (event.clientY / innerHeight) * -2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  var hits = raycaster.intersectObjects(clickables, true);
+  renderer.domElement.style.cursor = hits.length > 0 ? 'pointer' : 'default';
+}
+
+function showQuote(data) {
+  var q = data.quote;
+  if (!q) return;
+  document.getElementById('quote-icon').textContent   = q.icon;
+  document.getElementById('quote-text').textContent   = q.text;
+  document.getElementById('quote-author').textContent = q.author;
+  var popup = document.getElementById('quote-popup');
+  popup.classList.add('show');
+  clearTimeout(popup._timer);
+  popup._timer = setTimeout(function() { popup.classList.remove('show'); }, 8000);
+}
+
+function closeQuote() {
+  document.getElementById('quote-popup').classList.remove('show');
+}
+
+// ── 메인 애니메이션 루프 ─────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  var t = clock.getElapsedTime();
+
+  // 수면 파동
+  var water = scene.userData.water;
+  if (water) {
+    var wPos = water.userData.waveGeo.attributes.position;
+    for (var i = 0; i < wPos.count; i++) {
+      var x = wPos.getX(i);
+      var z = wPos.getZ(i);
+      wPos.setZ(i, Math.sin(x * 0.5 + t * 0.8) * 0.12 + Math.cos(z * 0.7 + t * 0.6) * 0.08);
+    }
+    wPos.needsUpdate = true;
+    water.userData.waveGeo.computeVertexNormals();
+  }
+
+  // 수초 흔들림
+  for (var pi = 0; pi < plants.length; pi++) {
+    var p = plants[pi];
+    var ud = p.userData;
+    if (ud.waveOffset !== undefined) {
+      if (ud.isStalk) {
+        p.rotation.z = Math.sin(t * ud.waveSpeed + ud.waveOffset) * ud.waveAmp * 3;
+        p.rotation.x = Math.sin(t * ud.waveSpeed * 0.7 + ud.waveOffset) * ud.waveAmp;
+      } else {
+        p.rotation.y = ud.baseRotY + Math.sin(t * ud.waveSpeed + ud.waveOffset) * ud.waveAmp * 8;
+        p.rotation.x = Math.sin(t * ud.waveSpeed * 0.7 + ud.waveOffset) * ud.waveAmp;
+      }
+    }
+  }
+
+  // 군집 중심 업데이트
+  var schoolTypes = ['tetra', 'guppy', 'rummy'];
+  for (var si = 0; si < schoolTypes.length; si++) {
+    var sType = schoolTypes[si];
+    var school = schoolCenters[sType];
+    if (!school) continue;
+    school.pos.lerp(school.target, 0.005);
+    if (school.pos.distanceTo(school.target) < 2) {
+      school.target.set(
+        (Math.random() - 0.5) * 14,
+        -0.5 + Math.random() * 2.5,
+        (Math.random() - 0.5) * 6
+      );
+    }
+  }
+
+  // 물고기 이동
+  for (var fi = 0; fi < fishes.length; fi++) {
+    var fish = fishes[fi];
+    var ud = fish.userData;
+    var isSchooling = (ud.fishType === 'tetra' || ud.fishType === 'guppy' || ud.fishType === 'rummy');
+
+    // 개별 목표 갱신
+    var diff = ud.individualTarget.clone().sub(fish.position);
+    if (diff.length() < 1.0) {
+      ud.individualTarget.set(
+        Math.max(-12, Math.min(12, (Math.random() - 0.5) * 18)),
+        Math.max(-3.5, Math.min(3.5, -0.5 + (Math.random() - 0.5) * 3)),
+        Math.max(-7, Math.min(5, (Math.random() - 0.5) * 7))
+      );
+    }
+
+    // 군집 영향
+    if (isSchooling && schoolCenters[ud.fishType]) {
+      var school = schoolCenters[ud.fishType];
+      var schoolPos = school.pos.clone().add(new THREE.Vector3(
+        (Math.random() - 0.5) * 3,
+        (Math.random() - 0.5) * 1.5,
+        (Math.random() - 0.5) * 2
+      ));
+      ud.target.lerpVectors(ud.individualTarget, schoolPos, 0.6);
+    } else {
+      ud.target.copy(ud.individualTarget);
+    }
+
+    // 경계 클램프
+    ud.target.x = Math.max(-12, Math.min(12, ud.target.x));
+    ud.target.y = Math.max(-3.5, Math.min(3.5, ud.target.y));
+    ud.target.z = Math.max(-7, Math.min(5, ud.target.z));
+
+    // 이동
+    fish.position.lerp(ud.target, ud.speed);
+
+    // 방향 전환
+    var moveDiff = ud.target.clone().sub(fish.position);
+    var targetAngle = Math.atan2(moveDiff.x, moveDiff.z);
+    var curAngle = fish.rotation.y;
+    var dAngle = targetAngle - curAngle;
+    while (dAngle >  Math.PI) dAngle -= Math.PI * 2;
+    while (dAngle < -Math.PI) dAngle += Math.PI * 2;
+    fish.rotation.y += dAngle * 0.04;
+    fish.rotation.z = -dAngle * 0.15;
+
+    // 꼬리/지느러미 흔들림
+    ud.tailPhase += ud.tailSpeed * 0.05;
+    if (ud.tail) ud.tail.rotation.y = Math.sin(ud.tailPhase) * 0.5;
+    if (ud.dorsalFin) ud.dorsalFin.rotation.x = Math.sin(ud.tailPhase * 0.8) * 0.1;
+
+    // 경계 처리
+    if (fish.position.y > 4.5)  ud.target.y = -1;
+    if (fish.position.y < -3.5) ud.target.y = 0;
+  }
+
+  // 기포
+  for (var bi = bubbles.length - 1; bi >= 0; bi--) {
+    var b = bubbles[bi];
+    b.userData.wobble += 0.04;
+    b.position.y += b.userData.vy;
+    b.position.x = b.userData.sx + Math.sin(b.userData.wobble) * b.userData.wobbleAmp * 30;
+
+    if (b.position.y > 7) {
+      scene.remove(b);
+      bubbles.splice(bi, 1);
+      var cidx = clickables.indexOf(b);
+      if (cidx > -1) clickables.splice(cidx, 1);
+      spawnBubble(null, false);
+    }
+  }
+
+  // 빛줄기
+  for (var ri = 0; ri < rays.length; ri++) {
+    var r = rays[ri];
+    var rud = r.userData;
+    r.material.opacity = rud.baseOpacity * (0.5 + 0.5 * Math.sin(t * rud.pulseSpeed + rud.phase));
+    r.position.x = rud.baseX + Math.sin(t * 0.2 + rud.phase) * 0.5;
+  }
+
+  // 부유 입자
+  for (var pi = 0; pi < floatingParticles.length; pi++) {
+    var fp = floatingParticles[pi];
+    var fpud = fp.userData;
+    fp.position.x += fpud.vx + Math.sin(t * 0.3 + fpud.phase) * 0.0005;
+    fp.position.y += fpud.vy;
+    fp.position.z += fpud.vz;
+
+    if (fp.position.x > 15) fp.position.x = -15;
+    if (fp.position.x < -15) fp.position.x = 15;
+    if (fp.position.y > 6) fp.position.y = -4;
+    if (fp.position.y < -4) fp.position.y = 6;
+    if (fp.position.z > 6) fp.position.z = -6;
+    if (fp.position.z < -6) fp.position.z = 6;
+  }
+
+  // 카메라 미세 흔들림
+  camera.position.x = Math.sin(t * 0.08) * 0.4;
+  camera.position.y = 1.5 + Math.cos(t * 0.06) * 0.15;
+  camera.lookAt(0, -0.5, 0);
+
+  renderer.render(scene, camera);
+}
+
+// 시작
+init();
+</script>
+</body>
+</html>

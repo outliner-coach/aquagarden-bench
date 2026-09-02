@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>아쿠아가든 2026 — 3D 디지털 수족관</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #000;
+      overflow: hidden;
+      font-family: 'Noto Serif KR', serif;
+    }
+
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    /* ── 조명 패널 ── */
+    #light-panel {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      padding: 18px 22px;
+      color: #e8f4f8;
+      width: 220px;
+      z-index: 100;
+      box-shadow: 0 8px 32px rgba(0, 60, 120, 0.4);
+    }
+
+    #light-panel h3 {
+      font-size: 13px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #7dd3fc;
+      margin-bottom: 14px;
+      text-align: center;
+    }
+
+    .slider-row {
+      margin-bottom: 12px;
+    }
+
+    .slider-row label {
+      font-size: 11px;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .slider-row input[type=range] {
+      width: 100%;
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.15);
+      outline: none;
+    }
+
+    .slider-row input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      box-shadow: 0 0 6px #38bdf8;
+    }
+
+    #color-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+
+    .color-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform .2s, border-color .2s;
+    }
+
+    .color-btn:hover,
+    .color-btn.active {
+      transform: scale(1.2);
+      border-color: #fff;
+    }
+
+    /* ── 툴팁/명언 팝업 ── */
+    #quote-popup {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%) translateY(30px);
+      background: rgba(0, 10, 30, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(100, 200, 255, 0.3);
+      border-radius: 20px;
+      padding: 22px 30px;
+      max-width: 520px;
+      width: 90%;
+      color: #e2f4ff;
+      text-align: center;
+      z-index: 200;
+      opacity: 0;
+      transition: opacity .4s, transform .4s;
+      pointer-events: none;
+      box-shadow: 0 0 40px rgba(0, 100, 200, 0.3);
+    }
+
+    #quote-popup.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+
+    #quote-popup .quote-icon {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    #quote-popup .quote-text {
+      font-size: 15px;
+      line-height: 1.7;
+      font-style: italic;
+      color: #bde8ff;
+    }
+
+    #quote-popup .quote-author {
+      font-size: 12px;
+      margin-top: 10px;
+      color: #7dd3fc;
+      letter-spacing: 1px;
+    }
+
+    #quote-popup .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 14px;
+      background: none;
+      border: none;
+      color: #7dd3fc;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    /* ── 하단 힌트 ── */
+    #hint {
+      position: fixed;
+      bottom: 16px;
+      right: 20px;
+      font-size: 11px;
+      color: rgba(150, 210, 255, 0.5);
+      letter-spacing: 1px;
+    }
+
+    /* ── 로딩 오버레이 ── */
+    #loading {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, #001830 0%, #000610 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      color: #7dd3fc;
+      transition: opacity 1s;
+    }
+
+    #loading .fish-spin {
+      font-size: 52px;
+      animation: spin 2s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    #loading p {
+      margin-top: 20px;
+      font-size: 14px;
+      letter-spacing: 3px;
+      color: #94c8e8;
+    }
+
+    #loading .bar-wrap {
+      width: 200px;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      margin-top: 20px;
+      overflow: hidden;
+    }
+
+    #loading .bar {
+      height: 100%;
+      background: #38bdf8;
+      border-radius: 2px;
+      animation: load 2s ease-out forwards;
+    }
+
+    @keyframes load {
+      from {
+        width: 0
+      }
+
+      to {
+        width: 100%
+      }
+    }
+
+    /* ── 물결 오버레이 ── */
+    #water-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 50;
+      background: linear-gradient(180deg,
+          rgba(0, 60, 120, 0.15) 0%,
+          transparent 30%,
+          transparent 70%,
+          rgba(0, 20, 60, 0.3) 100%);
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+  <!-- 로딩 -->
+  <div id="loading">
+    <div class="fish-spin">🐠</div>
+    <p>수족관을 준비 중...</p>
+    <div class="bar-wrap">
+      <div class="bar"></div>
+    </div>
+  </div>
+
+  <!-- 조명 패널 -->
+  <div id="light-panel">
+    <h3>💡 조명 설정</h3>
+    <div class="slider-row">
+      <label><span>밝기</span><span id="bright-val">70%</span></label>
+      <input type="range" id="brightness" min="0" max="100" value="70">
+    </div>
+    <div class="slider-row">
+      <label><span>수심 안개</span><span id="fog-val">40%</span></label>
+      <input type="range" id="fog-range" min="0" max="100" value="40">
+    </div>
+    <div class="slider-row">
+      <label><span>광선 각도</span><span id="angle-val">0°</span></label>
+      <input type="range" id="light-angle" min="-60" max="60" value="0">
+    </div>
+    <div style="margin-top:10px;">
+      <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:6px;">조명 색상</label>
+      <div id="color-row">
+        <div class="color-btn active" data-color="#b8e4ff" style="background:#b8e4ff;" title="자연광"></div>
+        <div class="color-btn" data-color="#ff9f4a" style="background:#ff9f4a;" title="석양"></div>
+        <div class="color-btn" data-color="#7b4fff" style="background:#7b4fff;" title="자외선"></div>
+        <div class="color-btn" data-color="#40ffe0" style="background:#40ffe0;" title="네온"></div>
+        <div class="color-btn" data-color="#ff4466" style="background:#ff4466;" title="루비"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 명언 팝업 -->
+  <div id="quote-popup">
+    <button class="close-btn" onclick="closeQuote()">✕</button>
+    <div class="quote-icon" id="quote-icon">🐟</div>
+    <div class="quote-text" id="quote-text"></div>
+    <div class="quote-author" id="quote-author"></div>
+  </div>
+
+  <!-- 물결 오버레이 -->
+  <div id="water-overlay"></div>
+
+  <!-- 힌트 -->
+  <div id="hint">오브젝트를 클릭하면 명언이 나타납니다</div>
+
+  <!-- Three.js CDN -->
+  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+
+  <script>
+    // ═══════════════════════════════════════════════════════
+    //  AQUA GARDEN 2026 — 3D Aquarium Engine
+    // ═══════════════════════════════════════════════════════
+
+    const QUOTES = {
+      fish: [
+        { icon: "🐟", text: "\"많은 사람들이 평생을 낚시를 하면서도, 그들이 추구하는 것이 물고기가 아니라는 것을 깨닫지 못한다.\"", author: "— 헨리 데이비드 소로우" },
+        { icon: "🐠", text: "\"물고기에게 나무를 오르라고 하면, 물고기는 평생 자신이 바보라고 믿으며 살아갈 것이다.\"", author: "— 알베르트 아인슈타인" },
+        { icon: "🐡", text: "\"강물을 거슬러 오르는 물고기만이 강의 깊이를 안다.\"", author: "— 작자 미상" },
+        { icon: "🦈", text: "\"바다는 두려움의 대상이 아니라, 경이의 대상이다.\"", author: "— 자크 쿠스토" },
+      ],
+      plant: [
+        { icon: "🌿", text: "\"자연은 책이다. 모든 페이지에 진리가 적혀 있다.\"", author: "— 요한 볼프강 폰 괴테" },
+        { icon: "🍃", text: "\"풀잎 하나에도 기적이 있다.\"", author: "— 월트 휘트먼" },
+        { icon: "🌱", text: "\"땅에는 숨겨진 지혜가 있다. 우리가 걷는 곳마다.\"", author: "— 루미" },
+      ],
+      rock: [
+        { icon: "🪨", text: "\"산을 움직이는 자는 작은 돌을 옮기는 것부터 시작한다.\"", author: "— 공자" },
+        { icon: "💎", text: "\"다이아몬드는 압력을 견뎌낸 탄소에 불과하다.\"", author: "— 작자 미상" },
+        { icon: "🗿", text: "\"바위는 폭풍을 기억하지 않는다. 다만 견뎌낼 뿐이다.\"", author: "— 마르쿠스 아우렐리우스" },
+      ],
+      wood: [
+        { icon: "🪵", text: "\"나무는 폭풍을 만나야 뿌리를 더 깊이 내린다.\"", author: "— 돌리 파튼" },
+        { icon: "🌲", text: "\"나무를 심기에 가장 좋은 때는 20년 전이었다. 그 다음으로 좋은 때는 바로 지금이다.\"", author: "— 중국 속담" },
+      ],
+      bubble: [
+        { icon: "🫧", text: "\"숨을 쉰다는 것, 그것이 이미 기적이다.\"", author: "— 틱낫한" },
+        { icon: "💫", text: "\"가장 단순한 것들이 가장 깊은 진리를 담는다.\"", author: "— 오쇼" },
+      ],
+    };
+
+    let scene, camera, renderer, clock;
+    let fishes = [], plants = [], bubbles = [], rays = [];
+    let mainLight, ambientLight, rimLight;
+    let raycaster, mouse;
+    let clickables = [];
+    let animId;
+
+    // ── 초기화 ──────────────────────────────────────────────
+    function init() {
+      scene = new THREE.Scene();
+      clock = new THREE.Clock();
+
+      // 배경색 (수중 파란색)
+      scene.background = new THREE.Color(0x001a2e);
+      scene.fog = new THREE.FogExp2(0x001a2e, 0.012);
+
+      // 카메라
+      camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 200);
+      camera.position.set(0, 2, 18);
+      camera.lookAt(0, 0, 0);
+
+      // 렌더러
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.2;
+      document.body.appendChild(renderer.domElement);
+
+      raycaster = new THREE.Raycaster();
+      mouse = new THREE.Vector2();
+
+      buildScene();
+      buildLights();
+      addEvents();
+
+      setTimeout(() => {
+        document.getElementById('loading').style.opacity = '0';
+        setTimeout(() => document.getElementById('loading').style.display = 'none', 1000);
+      }, 2200);
+
+      animate();
+    }
+
+    // ── 씬 구성 ─────────────────────────────────────────────
+    function buildScene() {
+      addSand();
+      addWaterSurface();
+      addRocks();
+      addDriftwood();
+      addPlants();
+      addFishes();
+      addBubbles();
+      addCaustics();
+    }
+
+    // 모래 바닥
+    function addSand() {
+      const geo = new THREE.PlaneGeometry(50, 30, 40, 20);
+      // 바닥 요철 추가
+      const pos = geo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        pos.setZ(i, (Math.random() - 0.5) * 0.25);
+      }
+      geo.computeVertexNormals();
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0x3d2e1a,
+        roughness: 1,
+        metalness: 0,
+      });
+      const sand = new THREE.Mesh(geo, mat);
+      sand.rotation.x = -Math.PI / 2;
+      sand.position.y = -4;
+      sand.receiveShadow = true;
+      scene.add(sand);
+
+      // 어두운 자갈층
+      const gravelGeo = new THREE.PlaneGeometry(50, 30);
+      const gravelMat = new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 1 });
+      const gravel = new THREE.Mesh(gravelGeo, gravelMat);
+      gravel.rotation.x = -Math.PI / 2;
+      gravel.position.y = -4.05;
+      scene.add(gravel);
+
+      // 작은 자갈 파티클
+      const pGeo = new THREE.SphereGeometry(0.06, 4, 4);
+      for (let i = 0; i < 300; i++) {
+        const m = new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(Math.random() * 0.1 + 0.06, 0.3, Math.random() * 0.2 + 0.1), roughness: 1 });
+        const p = new THREE.Mesh(pGeo, m);
+        p.position.set((Math.random() - 0.5) * 40, -3.9, (Math.random() - 0.5) * 12);
+        p.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+        scene.add(p);
+      }
+    }
+
+    // 수면
+    function addWaterSurface() {
+      const geo = new THREE.PlaneGeometry(60, 40, 80, 60);
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0x006fa8,
+        transparent: true,
+        opacity: 0.35,
+        roughness: 0.1,
+        metalness: 0.3,
+        side: THREE.DoubleSide,
+      });
+      const water = new THREE.Mesh(geo, mat);
+      water.rotation.x = -Math.PI / 2;
+      water.position.y = 6;
+      water.userData.type = 'water';
+      scene.add(water);
+      // 물결 애니메이션을 위해 참조 저장
+      water.userData.waveGeo = geo;
+      scene.userData.water = water;
+    }
+
+    // ── 바위 ─────────────────────────────────────────────────
+    function addRocks() {
+      const rockQuotes = QUOTES.rock;
+      const rockConfigs = [
+        { pos: [-5, -4, -2], scale: [2.8, 2.2, 2.2], color: 0x3a3f45 },
+        { pos: [-6.5, -4, -1], scale: [1.5, 1.8, 1.5], color: 0x2e3338 },
+        { pos: [-3.5, -4, -1], scale: [1.2, 1.0, 1.3], color: 0x44494f },
+        { pos: [4, -4, -3], scale: [1.8, 1.4, 1.6], color: 0x353a40 },
+        { pos: [5.2, -4, -2.2], scale: [1.0, 0.8, 0.9], color: 0x3d4248 },
+        { pos: [-8, -4, 1], scale: [1.3, 1.0, 1.2], color: 0x2a2f35 },
+        { pos: [7, -4, 0], scale: [1.5, 1.2, 1.4], color: 0x3f4450 },
+      ];
+      rockConfigs.forEach((cfg, i) => {
+        const geo = new THREE.DodecahedronGeometry(1, 1);
+        // 노이즈로 울퉁불퉁하게
+        const pos = geo.attributes.position;
+        for (let j = 0; j < pos.count; j++) {
+          const noise = (Math.random() - 0.5) * 0.3;
+          pos.setX(j, pos.getX(j) + noise);
+          pos.setY(j, pos.getY(j) + noise * 0.5);
+          pos.setZ(j, pos.getZ(j) + noise);
+        }
+        geo.computeVertexNormals();
+        const mat = new THREE.MeshStandardMaterial({
+          color: cfg.color, roughness: 0.95, metalness: 0.05,
+        });
+        const rock = new THREE.Mesh(geo, mat);
+        rock.position.set(...cfg.pos);
+        rock.scale.set(...cfg.scale);
+        rock.rotation.set(Math.random(), Math.random(), Math.random());
+        rock.castShadow = true;
+        rock.receiveShadow = true;
+        rock.userData = { clickable: true, type: 'rock', quote: rockQuotes[i % rockQuotes.length] };
+        scene.add(rock);
+        clickables.push(rock);
+
+        // 이끼 레이어
+        const mossGeo = new THREE.DodecahedronGeometry(1.03, 1);
+        const mossPos = mossGeo.attributes.position;
+        for (let j = 0; j < mossPos.count; j++) {
+          mossPos.setX(j, mossPos.getX(j) + (Math.random() - 0.5) * 0.1);
+          mossPos.setY(j, mossPos.getY(j) + (Math.random() - 0.5) * 0.05);
+        }
+        mossGeo.computeVertexNormals();
+        const mossMat = new THREE.MeshStandardMaterial({
+          color: 0x2d5a1b, roughness: 1, transparent: true, opacity: 0.6,
+        });
+        // 이끼는 윗면에만
+        const moss = new THREE.Mesh(mossGeo, mossMat);
+        moss.position.set(...cfg.pos);
+        moss.scale.set(...cfg.scale);
+        moss.rotation.copy(rock.rotation);
+        scene.add(moss);
+      });
+    }
+
+    // ── 유목 ─────────────────────────────────────────────────
+    function addDriftwood() {
+      const woodQuotes = QUOTES.wood;
+      // 굵은 가지
+      function makeBranch(x, y, z, rx, ry, rz, len, r, color, parentObj) {
+        const geo = new THREE.CylinderGeometry(r * 0.6, r, len, 7, 3);
+        const pos = geo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          pos.setX(i, pos.getX(i) + (Math.random() - 0.5) * r * 0.5);
+          pos.setZ(i, pos.getZ(i) + (Math.random() - 0.5) * r * 0.5);
+        }
+        geo.computeVertexNormals();
+        const mat = new THREE.MeshStandardMaterial({ color: color || 0x3d2b1a, roughness: 1 });
+        const branch = new THREE.Mesh(geo, mat);
+        branch.position.set(x, y, z);
+        branch.rotation.set(rx, ry, rz);
+        branch.castShadow = true;
+        branch.userData = { clickable: true, type: 'wood', quote: woodQuotes[0] };
+        scene.add(branch);
+        clickables.push(branch);
+        return branch;
+      }
+
+      // 메인 유목 몸체
+      makeBranch(-2, -2.2, -3, 0.3, 0.4, 0.1, 8, 0.5, 0x4a3320);
+      makeBranch(-1, -1.5, -2.5, 0.6, 0.2, 0.3, 5, 0.3, 0x3d2b1a);
+      makeBranch(0.5, -0.5, -2, 0.8, 0.5, 0.2, 4, 0.18, 0x5a3f28);
+      makeBranch(-3.5, -2.5, -2.5, 0.2, 0.6, -0.1, 3.5, 0.22, 0x3d2b1a);
+      makeBranch(3, -1.8, -2.8, 0.5, -0.3, 0.2, 3, 0.2, 0x4a3320);
+    }
+
+    // ── 수초 ─────────────────────────────────────────────────
+    function addPlants() {
+      plants = [];
+      const plantQuotes = QUOTES.plant;
+      const plantGroups = [
+        // [x, z, count, heightMul, colorH]
+        [-7, -2, 12, 1.4, 0.32],
+        [-4.5, -2.5, 8, 1.1, 0.30],
+        [-6, 1.5, 10, 1.0, 0.33],
+        [3.5, -2, 9, 1.2, 0.28],
+        [6, -1, 7, 0.9, 0.31],
+        [-1, -3, 6, 1.3, 0.29],
+        [2, 1, 5, 0.8, 0.34],
+        [-9, 0, 8, 1.1, 0.32],
+        [8.5, 1, 6, 1.0, 0.30],
+        // 앞쪽 수초
+        [-3, 2.5, 5, 0.7, 0.33],
+        [1, 3, 4, 0.6, 0.31],
+        [5, 2.8, 5, 0.8, 0.29],
+      ];
+
+      plantGroups.forEach((cfg, gi) => {
+        const [gx, gz, cnt, hm, hue] = cfg;
+        for (let i = 0; i < cnt; i++) {
+          const x = gx + (Math.random() - 0.5) * 2;
+          const z = gz + (Math.random() - 0.5) * 2;
+          const height = (1.5 + Math.random() * 2.5) * hm;
+
+          // 잎 여러 장으로 구성
+          const leafCount = 3 + Math.floor(Math.random() * 4);
+          for (let l = 0; l < leafCount; l++) {
+            const lHeight = height * (0.5 + Math.random() * 0.5);
+            const lWidth = 0.12 + Math.random() * 0.15;
+            const shape = new THREE.Shape();
+            shape.moveTo(0, 0);
+            shape.quadraticCurveTo(lWidth, lHeight * 0.5, (Math.random() - 0.5) * lWidth * 2, lHeight);
+            shape.quadraticCurveTo(-lWidth, lHeight * 0.5, 0, 0);
+            const geo = new THREE.ShapeGeometry(shape, 8);
+            const green = new THREE.Color().setHSL(hue + (Math.random() - 0.5) * 0.03, 0.7 + Math.random() * 0.2, 0.18 + Math.random() * 0.2);
+            const mat = new THREE.MeshStandardMaterial({
+              color: green, side: THREE.DoubleSide, roughness: 0.8,
+              transparent: true, opacity: 0.85,
+            });
+            const leaf = new THREE.Mesh(geo, mat);
+            leaf.position.set(x + (Math.random() - 0.5) * 0.3, -4, z + (Math.random() - 0.5) * 0.3);
+            leaf.rotation.y = Math.random() * Math.PI * 2;
+            leaf.rotation.x = (Math.random() - 0.5) * 0.2;
+            leaf.castShadow = false;
+            leaf.userData = {
+              clickable: true, type: 'plant',
+              quote: plantQuotes[Math.floor(Math.random() * plantQuotes.length)],
+              waveOffset: Math.random() * Math.PI * 2,
+              waveSpeed: 0.5 + Math.random() * 0.5,
+              waveAmp: 0.04 + Math.random() * 0.04,
+              baseRotY: leaf.rotation.y,
+            };
+            scene.add(leaf);
+            clickables.push(leaf);
+            plants.push(leaf);
+          }
+        }
+      });
+
+      // 붉은 수초 (자색/홍색)
+      for (let i = 0; i < 25; i++) {
+        const x = (Math.random() - 0.5) * 18;
+        const z = -1 + (Math.random() - 0.5) * 4;
+        const height = 1.0 + Math.random() * 2;
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        shape.quadraticCurveTo(0.1, height * 0.5, (Math.random() - 0.5) * 0.2, height);
+        shape.quadraticCurveTo(-0.1, height * 0.5, 0, 0);
+        const geo = new THREE.ShapeGeometry(shape, 6);
+        const red = new THREE.Color().setHSL(0.02 + Math.random() * 0.05, 0.7, 0.2 + Math.random() * 0.15);
+        const mat = new THREE.MeshStandardMaterial({ color: red, side: THREE.DoubleSide, roughness: 0.8, transparent: true, opacity: 0.8 });
+        const leaf = new THREE.Mesh(geo, mat);
+        leaf.position.set(x, -4, z);
+        leaf.rotation.y = Math.random() * Math.PI * 2;
+        leaf.userData = {
+          clickable: true, type: 'plant',
+          quote: QUOTES.plant[Math.floor(Math.random() * QUOTES.plant.length)],
+          waveOffset: Math.random() * Math.PI * 2,
+          waveSpeed: 0.4 + Math.random() * 0.6,
+          waveAmp: 0.05 + Math.random() * 0.05,
+          baseRotY: leaf.rotation.y,
+        };
+        scene.add(leaf);
+        clickables.push(leaf);
+        plants.push(leaf);
+      }
+    }
+
+    // ── 물고기 ───────────────────────────────────────────────
+    function addFishes() {
+      fishes = [];
+
+      // 종류 1: 베타 (Betta) — 화려한 긴 지느러미 빨간색
+      for (let i = 0; i < 2; i++) createFish('betta', i);
+      // 종류 2: 클라운피시 — 주황+흰 줄
+      for (let i = 0; i < 4; i++) createFish('clown', i);
+      // 종류 3: 구피 — 작고 다양한 색
+      for (let i = 0; i < 6; i++) createFish('guppy', i);
+      // 종류 4: 엔젤피시 — 납작하고 길쭉
+      for (let i = 0; i < 2; i++) createFish('angel', i);
+      // 종류 5: 테트라 — 작은 파란 형광
+      for (let i = 0; i < 5; i++) createFish('tetra', i);
+    }
+
+    function createFish(type, idx) {
+      const group = new THREE.Group();
+
+      let bodyColor, finColor, bodyScale, tailLength, speed;
+
+      if (type === 'betta') {
+        bodyColor = new THREE.Color(0xcc2200);
+        finColor = new THREE.Color(0xff4488);
+        bodyScale = { x: 0.55, y: 0.32, z: 0.2 };
+        tailLength = 1.1;
+        speed = 0.015;
+      } else if (type === 'clown') {
+        bodyColor = new THREE.Color(0xff6600);
+        finColor = new THREE.Color(0xff8833);
+        bodyScale = { x: 0.4, y: 0.28, z: 0.18 };
+        tailLength = 0.6;
+        speed = 0.022;
+      } else if (type === 'guppy') {
+        const hue = Math.random();
+        bodyColor = new THREE.Color().setHSL(hue, 0.8, 0.5);
+        finColor = new THREE.Color().setHSL(hue + 0.1, 0.9, 0.6);
+        bodyScale = { x: 0.28, y: 0.16, z: 0.12 };
+        tailLength = 0.55;
+        speed = 0.03;
+      } else if (type === 'angel') {
+        bodyColor = new THREE.Color(0xddccaa);
+        finColor = new THREE.Color(0x888866);
+        bodyScale = { x: 0.35, y: 0.55, z: 0.10 };
+        tailLength = 0.7;
+        speed = 0.018;
+      } else { // tetra
+        bodyColor = new THREE.Color(0x2266ff);
+        finColor = new THREE.Color(0x44aaff);
+        bodyScale = { x: 0.22, y: 0.13, z: 0.10 };
+        tailLength = 0.4;
+        speed = 0.035;
+      }
+
+      // 몸통
+      const bodyGeo = new THREE.SphereGeometry(1, 12, 8);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.4, metalness: 0.1 });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.scale.set(bodyScale.x, bodyScale.y, bodyScale.z);
+      group.add(body);
+
+      // 클라운피시 흰 줄무늬
+      if (type === 'clown') {
+        const stripeGeo = new THREE.CylinderGeometry(0.19, 0.19, 0.06, 16);
+        const stripeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+        [-0.1, 0.15].forEach(x => {
+          const s = new THREE.Mesh(stripeGeo, stripeMat);
+          s.rotation.z = Math.PI / 2;
+          s.position.x = x;
+          group.add(s);
+        });
+      }
+
+      // 엔젤피시 줄무늬
+      if (type === 'angel') {
+        [0, 0.15, -0.15].forEach(x => {
+          const sg = new THREE.BoxGeometry(0.05, 0.6, 0.12);
+          const sm = new THREE.MeshStandardMaterial({ color: 0x444400, roughness: 0.8 });
+          const sv = new THREE.Mesh(sg, sm);
+          sv.position.x = x;
+          group.add(sv);
+        });
+      }
+
+      // 눈
+      const eyeGeo = new THREE.SphereGeometry(0.06, 8, 8);
+      const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+      const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+      [-0.07, 0.07].forEach((ez, side) => {
+        const ew = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), eyeWhiteMat);
+        ew.position.set(bodyScale.x * 0.7, bodyScale.y * 0.3, ez * (1 / bodyScale.z) * 0.5);
+        group.add(ew);
+        const ep = new THREE.Mesh(eyeGeo, eyeMat);
+        ep.position.set(bodyScale.x * 0.75, bodyScale.y * 0.3, ez * (1 / bodyScale.z) * 0.5);
+        group.add(ep);
+      });
+
+      // 꼬리지느러미
+      const tailShape = new THREE.Shape();
+      tailShape.moveTo(0, 0);
+      tailShape.lineTo(-tailLength, tailLength * 0.6);
+      tailShape.lineTo(-tailLength * 0.8, 0);
+      tailShape.lineTo(-tailLength, -tailLength * 0.6);
+      tailShape.closePath();
+      const tailGeo = new THREE.ShapeGeometry(tailShape, 8);
+      const tailMat = new THREE.MeshStandardMaterial({ color: finColor, side: THREE.DoubleSide, transparent: true, opacity: 0.8, roughness: 0.6 });
+      const tail = new THREE.Mesh(tailGeo, tailMat);
+      tail.position.x = -bodyScale.x;
+      group.add(tail);
+      group.userData.tail = tail;
+
+      // 등지느러미
+      const dorsShape = new THREE.Shape();
+      dorsShape.moveTo(-0.1, 0);
+      dorsShape.quadraticCurveTo(0.05, bodyScale.y * 1.6, 0.2, 0);
+      dorsShape.closePath();
+      const dorsGeo = new THREE.ShapeGeometry(dorsShape);
+      const dorsMat = new THREE.MeshStandardMaterial({ color: finColor, side: THREE.DoubleSide, transparent: true, opacity: 0.75 });
+      const dorsalFin = new THREE.Mesh(dorsGeo, dorsMat);
+      dorsalFin.position.set(0, bodyScale.y, 0);
+      group.add(dorsalFin);
+      group.userData.dorsalFin = dorsalFin;
+
+      // 가슴지느러미 (양쪽)
+      const pectShape = new THREE.Shape();
+      pectShape.moveTo(0, 0);
+      pectShape.quadraticCurveTo(0.15, -0.15, 0.1, -0.3);
+      pectShape.quadraticCurveTo(0, -0.1, 0, 0);
+      const pectGeo = new THREE.ShapeGeometry(pectShape, 6);
+      [1, -1].forEach(side => {
+        const pMat = new THREE.MeshStandardMaterial({ color: finColor, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+        const pect = new THREE.Mesh(pectGeo, pMat);
+        pect.position.set(0, -bodyScale.y * 0.3, side * bodyScale.z);
+        pect.rotation.y = side * 0.5;
+        group.add(pect);
+      });
+
+      // 초기 위치 & 목표 설정
+      group.position.set(
+        (Math.random() - 0.5) * 20,
+        -1 + (Math.random() - 0.5) * 3,
+        (Math.random() - 0.5) * 8
+      );
+      group.rotation.y = Math.random() * Math.PI * 2;
+
+      group.userData = {
+        ...group.userData,
+        clickable: true,
+        type: 'fish',
+        fishType: type,
+        speed: speed,
+        target: new THREE.Vector3((Math.random() - 0.5) * 18, -1 + (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 7),
+        tailPhase: Math.random() * Math.PI * 2,
+        tailSpeed: 3 + Math.random() * 2,
+        quote: QUOTES.fish[Math.floor(Math.random() * QUOTES.fish.length)],
+      };
+      scene.add(group);
+      clickables.push(group);
+      fishes.push(group);
+    }
+
+    // ── 기포 ─────────────────────────────────────────────────
+    function addBubbles() {
+      bubbles = [];
+      const bubbleGeo = new THREE.SphereGeometry(1, 8, 8);
+      for (let i = 0; i < 60; i++) spawnBubble(bubbleGeo, true);
+      scene.userData.bubbleGeo = bubbleGeo;
+    }
+
+    function spawnBubble(geo, initial) {
+      const r = 0.03 + Math.random() * 0.07;
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0xaaddff,
+        transparent: true,
+        opacity: 0.25 + Math.random() * 0.2,
+        roughness: 0.0,
+        metalness: 0.5,
+      });
+      const b = new THREE.Mesh(geo || scene.userData.bubbleGeo, mat);
+      const sx = (Math.random() - 0.5) * 20;
+      const sz = (Math.random() - 0.5) * 8;
+      const sy = initial ? (Math.random() - 0.5) * 10 : -4;
+      b.position.set(sx, sy, sz);
+      b.scale.setScalar(r);
+      b.userData = {
+        clickable: true, type: 'bubble',
+        quote: QUOTES.bubble[Math.floor(Math.random() * QUOTES.bubble.length)],
+        vy: 0.008 + Math.random() * 0.015,
+        wobble: Math.random() * Math.PI * 2,
+        wobbleAmp: 0.002 + Math.random() * 0.004,
+        sx, sz,
+      };
+      scene.add(b);
+      bubbles.push(b);
+      clickables.push(b);
+      return b;
+    }
+
+    // ── 코스틱 광선 ─────────────────────────────────────────
+    function addCaustics() {
+      rays = [];
+      for (let i = 0; i < 12; i++) {
+        const geo = new THREE.CylinderGeometry(0.04, 0.5, 15, 8, 1, true);
+        const mat = new THREE.MeshBasicMaterial({
+          color: 0x88ccff,
+          transparent: true,
+          opacity: 0.04,
+          side: THREE.BackSide,
+          depthWrite: false,
+        });
+        const ray = new THREE.Mesh(geo, mat);
+        ray.position.set((Math.random() - 0.5) * 22, 1, (Math.random() - 0.5) * 10);
+        ray.rotation.z = (Math.random() - 0.5) * 0.15;
+        ray.rotation.x = (Math.random() - 0.5) * 0.1;
+        scene.add(ray);
+        ray.userData = { baseOpacity: 0.02 + Math.random() * 0.04, phase: Math.random() * Math.PI * 2 };
+        rays.push(ray);
+      }
+    }
+
+    // ── 조명 ─────────────────────────────────────────────────
+    function buildLights() {
+      ambientLight = new THREE.AmbientLight(0x003366, 0.6);
+      scene.add(ambientLight);
+
+      mainLight = new THREE.DirectionalLight(0xb8e4ff, 1.4);
+      mainLight.position.set(0, 15, 5);
+      mainLight.castShadow = true;
+      mainLight.shadow.mapSize.set(2048, 2048);
+      mainLight.shadow.camera.near = 0.5;
+      mainLight.shadow.camera.far = 50;
+      mainLight.shadow.camera.left = -20;
+      mainLight.shadow.camera.right = 20;
+      mainLight.shadow.camera.top = 15;
+      mainLight.shadow.camera.bottom = -15;
+      scene.add(mainLight);
+
+      rimLight = new THREE.PointLight(0x0066aa, 0.8, 30);
+      rimLight.position.set(-10, 3, 0);
+      scene.add(rimLight);
+
+      const backLight = new THREE.PointLight(0x002244, 0.5, 25);
+      backLight.position.set(0, -2, -8);
+      scene.add(backLight);
+    }
+
+    // ── 조명 컨트롤 이벤트 ────────────────────────────────────
+    function addEvents() {
+      // 밝기
+      document.getElementById('brightness').addEventListener('input', e => {
+        const v = e.target.value / 100;
+        document.getElementById('bright-val').textContent = e.target.value + '%';
+        mainLight.intensity = v * 2.0;
+        ambientLight.intensity = v * 0.8;
+        rimLight.intensity = v * 1.0;
+        renderer.toneMappingExposure = 0.6 + v * 0.9;
+      });
+
+      // 안개
+      document.getElementById('fog-range').addEventListener('input', e => {
+        const v = e.target.value / 100;
+        document.getElementById('fog-val').textContent = e.target.value + '%';
+        scene.fog.density = 0.003 + v * 0.025;
+      });
+
+      // 광선 각도
+      document.getElementById('light-angle').addEventListener('input', e => {
+        const deg = parseInt(e.target.value);
+        document.getElementById('angle-val').textContent = deg + '°';
+        const rad = deg * Math.PI / 180;
+        mainLight.position.x = Math.sin(rad) * 15;
+        rimLight.position.x = -Math.sin(rad) * 10;
+      });
+
+      // 색상 버튼
+      document.querySelectorAll('.color-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const hex = parseInt(btn.dataset.color.replace('#', ''), 16);
+          mainLight.color.setHex(hex);
+          ambientLight.color.setHex(Math.round(hex * 0.5));
+        });
+      });
+
+      // 클릭 → 명언
+      renderer.domElement.addEventListener('click', onCanvasClick);
+
+      // 리사이즈
+      window.addEventListener('resize', () => {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+      });
+    }
+
+    // ── 클릭 핸들러 ──────────────────────────────────────────
+    function onCanvasClick(event) {
+      mouse.x = (event.clientX / innerWidth) * 2 - 1;
+      mouse.y = (event.clientY / innerHeight) * -2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+
+      // 먼저 물고기 그룹 자체를 체크
+      const fishHit = raycaster.intersectObjects(fishes, true);
+      if (fishHit.length > 0) {
+        let obj = fishHit[0].object;
+        // 부모 그룹 찾기
+        while (obj.parent && !obj.userData.fishType) obj = obj.parent;
+        showQuote(obj.userData);
+        return;
+      }
+
+      const hits = raycaster.intersectObjects(clickables, true);
+      if (hits.length > 0) {
+        let obj = hits[0].object;
+        // 클릭 가능 유저데이터 찾기
+        while (obj && !obj.userData.clickable) obj = obj.parent;
+        if (obj && obj.userData.quote) showQuote(obj.userData);
+      }
+    }
+
+    function showQuote(data) {
+      const q = data.quote;
+      if (!q) return;
+      document.getElementById('quote-icon').textContent = q.icon;
+      document.getElementById('quote-text').textContent = q.text;
+      document.getElementById('quote-author').textContent = q.author;
+      const popup = document.getElementById('quote-popup');
+      popup.classList.add('show');
+      clearTimeout(popup._timer);
+      popup._timer = setTimeout(() => popup.classList.remove('show'), 8000);
+    }
+
+    function closeQuote() {
+      document.getElementById('quote-popup').classList.remove('show');
+    }
+
+    // ── 메인 애니메이션 루프 ─────────────────────────────────
+    function animate() {
+      animId = requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+      const dt = clock.getDelta ? 0.016 : 0.016;
+
+      // 수면 파동
+      const water = scene.userData.water;
+      if (water) {
+        const wPos = water.userData.waveGeo.attributes.position;
+        for (let i = 0; i < wPos.count; i++) {
+          const x = wPos.getX(i);
+          const z = wPos.getZ(i);
+          wPos.setZ(i, Math.sin(x * 0.5 + t * 0.8) * 0.12 + Math.cos(z * 0.7 + t * 0.6) * 0.08);
+        }
+        water.userData.waveGeo.attributes.position.needsUpdate = true;
+        water.userData.waveGeo.computeVertexNormals();
+      }
+
+      // 수초 흔들림
+      plants.forEach(leaf => {
+        const { waveOffset, waveSpeed, waveAmp, baseRotY } = leaf.userData;
+        leaf.rotation.y = baseRotY + Math.sin(t * waveSpeed + waveOffset) * waveAmp * 8;
+        leaf.rotation.x = Math.sin(t * waveSpeed * 0.7 + waveOffset) * waveAmp;
+      });
+
+      // 물고기 이동
+      fishes.forEach(fish => {
+        const ud = fish.userData;
+        const diff = ud.target.clone().sub(fish.position);
+        const dist = diff.length();
+
+        if (dist < 1.0) {
+          // 새 목표 설정
+          ud.target.set(
+            (Math.random() - 0.5) * 18,
+            -0.5 + (Math.random() - 0.5) * 3.0,
+            (Math.random() - 0.5) * 7
+          );
+          // 경계 클램프
+          ud.target.x = Math.max(-12, Math.min(12, ud.target.x));
+          ud.target.y = Math.max(-3.5, Math.min(3.5, ud.target.y));
+          ud.target.z = Math.max(-7, Math.min(5, ud.target.z));
+        }
+
+        // 부드럽게 이동
+        fish.position.lerp(ud.target, ud.speed);
+
+        // 방향 전환
+        const targetAngle = Math.atan2(diff.x, diff.z);
+        const curAngle = fish.rotation.y;
+        let dAngle = targetAngle - curAngle;
+        while (dAngle > Math.PI) dAngle -= Math.PI * 2;
+        while (dAngle < -Math.PI) dAngle += Math.PI * 2;
+        fish.rotation.y += dAngle * 0.04;
+
+        // 약간 기울기
+        fish.rotation.z = -dAngle * 0.15;
+
+        // 꼬리 흔들림
+        ud.tailPhase += ud.tailSpeed * 0.05;
+        if (ud.tail) {
+          ud.tail.rotation.y = Math.sin(ud.tailPhase) * 0.5;
+        }
+        if (ud.dorsalFin) {
+          ud.dorsalFin.rotation.x = Math.sin(ud.tailPhase * 0.8) * 0.1;
+        }
+
+        // 수면/바닥 경계 처리
+        if (fish.position.y > 4.5) fish.userData.target.y = -1;
+        if (fish.position.y < -3.5) fish.userData.target.y = 0;
+      });
+
+      // 기포
+      bubbles.forEach((b, i) => {
+        b.userData.wobble += 0.04;
+        b.position.y += b.userData.vy;
+        b.position.x = b.userData.sx + Math.sin(b.userData.wobble) * b.userData.wobbleAmp * 30;
+
+        if (b.position.y > 7) {
+          scene.remove(b);
+          bubbles.splice(i, 1);
+          const idx = clickables.indexOf(b);
+          if (idx > -1) clickables.splice(idx, 1);
+          spawnBubble(null, false);
+        }
+      });
+
+      // 코스틱 광선 깜빡임
+      rays.forEach(r => {
+        r.material.opacity = r.userData.baseOpacity + Math.sin(t * 0.8 + r.userData.phase) * 0.02;
+      });
+
+      // 카메라 서브틀 흔들림
+      camera.position.x = Math.sin(t * 0.1) * 0.5;
+      camera.position.y = 2 + Math.cos(t * 0.08) * 0.2;
+      camera.lookAt(0, 0, 0);
+
+      renderer.render(scene, camera);
+    }
+
+    // 시작
+    init();
+  </script>
+</body>
+
+</html>
