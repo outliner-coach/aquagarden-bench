@@ -1,0 +1,2226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>AquaGarden 3D 수족관 벤치마크 (Gemini 3.8 Flash High)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #030811;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #e6f1ff;
+    }
+
+    #webgl-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* UI 공통 글래스모피즘 */
+    .glass {
+      background: rgba(10, 25, 47, 0.65);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(100, 255, 218, 0.2);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+
+    /* 헤더 컨트롤 바 */
+    #header-bar {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      right: 20px;
+      height: 58px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 10;
+      pointer-events: auto;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #64ffda 0%, #00b4d8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-badge {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 20px;
+      background: rgba(100, 255, 218, 0.15);
+      border: 1px solid rgba(100, 255, 218, 0.4);
+      color: #64ffda;
+      -webkit-text-fill-color: #64ffda;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .lighting-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(5, 15, 30, 0.5);
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .btn-light {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #8892b0;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-light:hover {
+      color: #e6f1ff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .btn-light.active {
+      background: rgba(100, 255, 218, 0.2);
+      color: #64ffda;
+      font-weight: 600;
+      box-shadow: 0 0 12px rgba(100, 255, 218, 0.25);
+    }
+
+    .action-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #ccd6f6;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 1rem;
+    }
+
+    .icon-btn:hover {
+      background: rgba(100, 255, 218, 0.15);
+      border-color: rgba(100, 255, 218, 0.5);
+      color: #64ffda;
+      transform: translateY(-1px);
+    }
+
+    .icon-btn.active {
+      background: #64ffda;
+      color: #030811;
+      border-color: #64ffda;
+    }
+
+    /* 우측 사이드 패널 */
+    #sidebar-panel {
+      position: absolute;
+      top: 86px;
+      right: 20px;
+      width: 260px;
+      border-radius: 16px;
+      padding: 18px;
+      z-index: 10;
+      pointer-events: auto;
+      transition: all 0.3s ease;
+      font-size: 0.85rem;
+    }
+
+    .panel-section {
+      margin-bottom: 16px;
+    }
+    .panel-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .panel-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #8892b0;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .slider-label-group {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: #ccd6f6;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 5px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.15);
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #64ffda;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(100, 255, 218, 0.8);
+      transition: transform 0.1s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .stat-box {
+      background: rgba(5, 15, 30, 0.4);
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stat-val {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #64ffda;
+    }
+
+    .stat-name {
+      font-size: 0.7rem;
+      color: #8892b0;
+    }
+
+    /* 하단 가이드 바 */
+    #footer-guide {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 24px;
+      border-radius: 30px;
+      font-size: 0.82rem;
+      color: #ccd6f6;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 10;
+      pointer-events: auto;
+      white-space: nowrap;
+    }
+
+    .kbd-tag {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 0.7rem;
+      font-family: monospace;
+      color: #64ffda;
+    }
+
+    /* 명언 팝업 모달 */
+    #quote-modal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.9);
+      width: 90%;
+      max-width: 480px;
+      border-radius: 20px;
+      padding: 28px;
+      z-index: 100;
+      pointer-events: auto;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      border: 1px solid rgba(100, 255, 218, 0.35);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65), 0 0 40px rgba(100, 255, 218, 0.15);
+    }
+
+    #quote-modal.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .quote-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .target-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(100, 255, 218, 0.15);
+      color: #64ffda;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(100, 255, 218, 0.3);
+    }
+
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: #8892b0;
+      font-size: 1.25rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    .modal-close-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .quote-text {
+      font-size: 1.15rem;
+      line-height: 1.6;
+      color: #f0f6fc;
+      font-weight: 500;
+      margin-bottom: 14px;
+      word-break: keep-all;
+      position: relative;
+    }
+
+    .quote-author {
+      font-size: 0.9rem;
+      color: #64ffda;
+      text-align: right;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    .quote-desc {
+      font-size: 0.82rem;
+      color: #8892b0;
+      line-height: 1.5;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      word-break: keep-all;
+    }
+
+    /* 포인터 툴팁 */
+    #cursor-tooltip {
+      position: absolute;
+      pointer-events: none;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #64ffda;
+      background: rgba(5, 15, 30, 0.85);
+      border: 1px solid rgba(100, 255, 218, 0.4);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      z-index: 50;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      white-space: nowrap;
+      transform: translate(14px, 14px);
+    }
+
+    /* 반응형 */
+    @media (max-width: 860px) {
+      #header-bar {
+        height: auto;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 12px;
+      }
+      #sidebar-panel {
+        top: auto;
+        bottom: 80px;
+        right: 12px;
+        width: 220px;
+      }
+      #footer-guide {
+        display: none;
+      }
+    }
+  </style>
+
+  <!-- Three.js CDN ES 모듈 Importmap -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- 3D WebGL Canvas 컨테이너 -->
+  <div id="webgl-container"></div>
+
+  <!-- 상단 컨트롤 헤더 -->
+  <header id="header-bar" class="glass">
+    <div class="brand-title">
+      <span>AquaGarden</span>
+      <span class="brand-badge">Gemini 3.8 Flash High</span>
+    </div>
+
+    <!-- 조명 프리셋 -->
+    <div class="lighting-controls">
+      <button class="btn-light active" data-preset="day">☀️ 주광(Day)</button>
+      <button class="btn-light" data-preset="sunset">🌅 석양(Sunset)</button>
+      <button class="btn-light" data-preset="night">🌙 달빛(Night)</button>
+      <button class="btn-light" data-preset="neon">🌌 심해(Abyss)</button>
+    </div>
+
+    <!-- 액션 아이콘들 -->
+    <div class="action-group">
+      <button id="btn-sound" class="icon-btn" title="수중 음향 켜기/끄기">🔇</button>
+      <button id="btn-play" class="icon-btn" title="일시정지/재생 (Space)">⏸️</button>
+      <button id="btn-reset" class="icon-btn" title="시점 리셋 (R)">🔄</button>
+      <button id="btn-fullscreen" class="icon-btn" title="전체화면 (F)">⛶</button>
+    </div>
+  </header>
+
+  <!-- 우측 사이드 패널 -->
+  <aside id="sidebar-panel" class="glass">
+    <div class="panel-section">
+      <div class="panel-title">
+        <span>조명 및 수중 효과</span>
+      </div>
+      <div class="slider-row">
+        <div class="slider-label-group">
+          <span>조명 강도</span>
+          <span id="light-val">1.0x</span>
+        </div>
+        <input type="range" id="slider-light" min="0.2" max="2.0" step="0.05" value="1.0">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label-group">
+          <span>수초 흔들림 속도</span>
+          <span id="wave-val">1.0x</span>
+        </div>
+        <input type="range" id="slider-wave" min="0.2" max="2.5" step="0.1" value="1.0">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label-group">
+          <span>물고기 유영 속도</span>
+          <span id="swim-val">1.0x</span>
+        </div>
+        <input type="range" id="slider-swim" min="0.3" max="2.5" step="0.1" value="1.0">
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">
+        <span>수조 생태계 통계</span>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-val" id="stat-fps">60</div>
+          <div class="stat-name">FPS</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="stat-fish">23</div>
+          <div class="stat-name">물고기 (3종)</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">1,200+</div>
+          <div class="stat-name">수초 개체</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">100</div>
+          <div class="stat-name">기포 파티클</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 하단 단축키 가이드 -->
+  <footer id="footer-guide" class="glass">
+    <span>💡 <b>오브젝트 클릭</b>: 물고기, 러버덕, 유목, 암석, 수초에 담긴 명언 감상</span>
+    <span><span class="kbd-tag">Space</span> 일시정지</span>
+    <span><span class="kbd-tag">R</span> 시점 리셋</span>
+    <span><span class="kbd-tag">Q</span> 명언 순환</span>
+    <span><span class="kbd-tag">F</span> 전체화면</span>
+    <span><span class="kbd-tag">H</span> UI 숨기기</span>
+  </footer>
+
+  <!-- 호버 툴팁 -->
+  <div id="cursor-tooltip">클릭하여 명언 확인</div>
+
+  <!-- 명언 팝업 모달 -->
+  <div id="quote-modal" class="glass">
+    <div class="quote-header">
+      <span class="target-tag" id="modal-target-badge">🐟 레드 베타</span>
+      <button class="modal-close-btn" id="modal-close-btn">✕</button>
+    </div>
+    <div class="quote-text" id="modal-quote-text">
+      “많은 사람들이 평생을 낚시를 하면서도, 그들이 추구하는 것이 물고기가 아니라는 것을 깨닫지 못한다.”
+    </div>
+    <div class="quote-author" id="modal-quote-author">
+      — 헨리 데이비드 소로우
+    </div>
+    <div class="quote-desc" id="modal-quote-desc">
+      고독 속에서 피어나는 진정한 자유와 내면의 고요를 상징합니다.
+    </div>
+  </div>
+
+  <!-- 메인 Three.js 스크립트 -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    /* ==========================================================================
+       1. 사운드 신시사이저 (Web Audio API - 무외부 에셋 절차적 오디오)
+       ========================================================================== */
+    class ProceduralAudio {
+      constructor() {
+        this.ctx = null;
+        this.ambientGain = null;
+        this.isPlaying = false;
+      }
+
+      init() {
+        if (this.ctx) return;
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioContext();
+
+        // 핑크 노이즈 버퍼 생성 (수중 앰비언스)
+        const bufferSize = this.ctx.sampleRate * 2;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          b3 = 0.86650 * b3 + white * 0.3104856;
+          b4 = 0.55000 * b4 + white * 0.5329522;
+          b5 = -0.7616 * b5 - white * 0.0168980;
+          output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.04;
+          b6 = white * 0.115926;
+        }
+
+        const whiteNoise = this.ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+        whiteNoise.loop = true;
+
+        // 로우패스 필터로 깊은 물속 느낌 구현
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 350;
+
+        this.ambientGain = this.ctx.createGain();
+        this.ambientGain.gain.value = 0.0;
+
+        whiteNoise.connect(filter);
+        filter.connect(this.ambientGain);
+        this.ambientGain.connect(this.ctx.destination);
+        whiteNoise.start(0);
+      }
+
+      toggle() {
+        this.init();
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+
+        if (!this.isPlaying) {
+          this.ambientGain.gain.setTargetAtTime(0.35, this.ctx.currentTime, 0.5);
+          this.isPlaying = true;
+          this.scheduleBubbleSound();
+        } else {
+          this.ambientGain.gain.setTargetAtTime(0.0, this.ctx.currentTime, 0.3);
+          this.isPlaying = false;
+        }
+        return this.isPlaying;
+      }
+
+      // 기포 뽀글 소리
+      playBubble() {
+        if (!this.isPlaying || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        const startFreq = 600 + Math.random() * 400;
+        const endFreq = startFreq + 500 + Math.random() * 300;
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(startFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.12);
+
+        gain.gain.setValueAtTime(0.06, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.13);
+      }
+
+      // 클릭 퐁 소리
+      playPop() {
+        if (!this.ctx) this.init();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(1400, now + 0.08);
+
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.09);
+      }
+
+      scheduleBubbleSound() {
+        if (!this.isPlaying) return;
+        this.playBubble();
+        const nextTime = 400 + Math.random() * 1200;
+        setTimeout(() => this.scheduleBubbleSound(), nextTime);
+      }
+    }
+
+    const soundSystem = new ProceduralAudio();
+
+    /* ==========================================================================
+       2. 절차적 캔버스 텍스처 생성기
+       ========================================================================== */
+    function createSandTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      // 베이지 모래 톤
+      ctx.fillStyle = '#e3c69c';
+      ctx.fillRect(0, 0, 512, 512);
+
+      const imgData = ctx.getImageData(0, 0, 512, 512);
+      const data = imgData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const noise = (Math.random() - 0.5) * 45;
+        data[i] = Math.min(255, Math.max(0, data[i] + noise));
+        data[i+1] = Math.min(255, Math.max(0, data[i+1] + noise * 0.9));
+        data[i+2] = Math.min(255, Math.max(0, data[i+2] + noise * 0.7));
+      }
+      ctx.putImageData(imgData, 0, 0);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(4, 4);
+      return tex;
+    }
+
+    function createSoilTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#221914';
+      ctx.fillRect(0, 0, 512, 512);
+
+      // 둥글둥글한 아쿠아 소일 과립 표현
+      for (let i = 0; i < 4000; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const r = 2 + Math.random() * 4;
+        const shade = Math.floor(25 + Math.random() * 45);
+        ctx.fillStyle = `rgb(${shade + 8}, ${shade + 3}, ${shade})`;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(4, 4);
+      return tex;
+    }
+
+    function createRockTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#4a524a';
+      ctx.fillRect(0, 0, 512, 512);
+
+      // 암석 결 무늬
+      for (let y = 0; y < 512; y += 4) {
+        const v = 50 + Math.sin(y * 0.05) * 20 + Math.random() * 30;
+        ctx.fillStyle = `rgb(${v}, ${v + 4}, ${v - 2})`;
+        ctx.fillRect(0, y, 512, 4);
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      return tex;
+    }
+
+    function createMossTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#2f5223';
+      ctx.fillRect(0, 0, 256, 256);
+
+      for (let i = 0; i < 2000; i++) {
+        const x = Math.random() * 256;
+        const y = Math.random() * 256;
+        const r = 1 + Math.random() * 3;
+        const g = 80 + Math.floor(Math.random() * 90);
+        ctx.fillStyle = `rgb(${Math.floor(g*0.4)}, ${g}, ${Math.floor(g*0.25)})`;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    // 동적 코스틱(Caustics) 캔버스
+    class DynamicCaustics {
+      constructor() {
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = 256;
+        this.canvas.height = 256;
+        this.ctx = this.canvas.getContext('2d');
+        this.texture = new THREE.CanvasTexture(this.canvas);
+        this.texture.wrapS = THREE.RepeatWrapping;
+        this.texture.wrapT = THREE.RepeatWrapping;
+        this.texture.repeat.set(3, 3);
+      }
+
+      update(time) {
+        const w = 256, h = 256;
+        const imgData = this.ctx.createImageData(w, h);
+        const d = imgData.data;
+
+        for (let y = 0; y < h; y += 2) {
+          for (let x = 0; x < w; x += 2) {
+            const u = x * 0.035;
+            const v = y * 0.035;
+            const wave = Math.sin(u + time * 1.8) +
+                         Math.sin(v + time * 1.5) +
+                         Math.sin((u + v) * 0.8 + time * 2.2) +
+                         Math.cos(Math.sqrt(u*u + v*v) - time * 2.0);
+
+            let intensity = Math.pow(Math.max(0, (wave + 3.0) / 6.0), 4) * 255;
+            intensity = Math.min(255, intensity * 1.8);
+
+            const idx = (y * w + x) * 4;
+            d[idx] = intensity * 0.8;
+            d[idx+1] = intensity * 0.95;
+            d[idx+2] = intensity;
+            d[idx+3] = intensity * 0.5;
+
+            // 2x2 블록 복사로 성능 최적화
+            const idxR = idx + 4;
+            const idxB = idx + w * 4;
+            const idxBR = idxB + 4;
+            for (let offset of [idxR, idxB, idxBR]) {
+              if (offset < d.length) {
+                d[offset] = d[idx];
+                d[offset+1] = d[idx+1];
+                d[offset+2] = d[idx+2];
+                d[offset+3] = d[idx+3];
+              }
+            }
+          }
+        }
+        this.ctx.putImageData(imgData, 0, 0);
+        this.texture.needsUpdate = true;
+      }
+    }
+
+    /* ==========================================================================
+       3. 씬, 카메라, 렌더러 및 조명 설정
+       ========================================================================== */
+    const container = document.getElementById('webgl-container');
+    const scene = new THREE.Scene();
+
+    // 수중 안개 효과 (부드럽고 깊이 있는 수중 분위기)
+    const fogDayColor = new THREE.Color(0x0a263d);
+    scene.fog = new THREE.FogExp2(fogDayColor, 0.024);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
+    camera.position.set(0, 11, 33);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.target.set(0, 8.5, 0);
+    controls.maxPolarAngle = Math.PI / 2 + 0.05; // 바닥 아래로 너무 내려가지 않도록 제한
+    controls.minDistance = 8;
+    controls.maxDistance = 50;
+
+    // 조명 시스템
+    const ambientLight = new THREE.AmbientLight(0x406e8e, 1.2);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff7e6, 2.5);
+    sunLight.position.set(5, 25, 10);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 1;
+    sunLight.shadow.camera.far = 45;
+    sunLight.shadow.camera.left = -20;
+    sunLight.shadow.camera.right = 20;
+    sunLight.shadow.camera.top = 20;
+    sunLight.shadow.camera.bottom = -5;
+    sunLight.shadow.bias = -0.001;
+    scene.add(sunLight);
+
+    const waterTopLight = new THREE.PointLight(0x64ffda, 1.8, 35, 1.2);
+    waterTopLight.position.set(0, 18, 0);
+    scene.add(waterTopLight);
+
+    const fillLight = new THREE.DirectionalLight(0x0077b6, 0.8);
+    fillLight.position.set(-15, 10, -10);
+    scene.add(fillLight);
+
+    // 코스틱 프로젝터 메쉬
+    const causticsSystem = new DynamicCaustics();
+    const causticsPlaneGeo = new THREE.PlaneGeometry(36, 22);
+    const causticsMat = new THREE.MeshBasicMaterial({
+      map: causticsSystem.texture,
+      transparent: true,
+      opacity: 0.35,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const causticsMesh = new THREE.Mesh(causticsPlaneGeo, causticsMat);
+    causticsMesh.rotation.x = -Math.PI / 2;
+    causticsMesh.position.set(0, 0.15, 0);
+    scene.add(causticsMesh);
+
+    // 조명 프리셋 정의
+    const lightingPresets = {
+      day: {
+        ambient: 0x406e8e,
+        ambientInt: 1.2,
+        sun: 0xfff7e6,
+        sunInt: 2.5,
+        water: 0x64ffda,
+        fog: 0x0a263d,
+        fogDensity: 0.024,
+        exposure: 1.15
+      },
+      sunset: {
+        ambient: 0x5a2d24,
+        ambientInt: 1.1,
+        sun: 0xff7b54,
+        sunInt: 2.8,
+        water: 0xffb26b,
+        fog: 0x2e1315,
+        fogDensity: 0.028,
+        exposure: 1.25
+      },
+      night: {
+        ambient: 0x081326,
+        ambientInt: 0.6,
+        sun: 0x3d72b4,
+        sunInt: 1.0,
+        water: 0x5294e2,
+        fog: 0x030914,
+        fogDensity: 0.035,
+        exposure: 0.95
+      },
+      neon: {
+        ambient: 0x1f0b35,
+        ambientInt: 1.4,
+        sun: 0x00f5d4,
+        sunInt: 2.4,
+        water: 0x7b2cbf,
+        fog: 0x120024,
+        fogDensity: 0.03,
+        exposure: 1.3
+      }
+    };
+
+    let currentPreset = 'day';
+    let userLightMultiplier = 1.0;
+
+    function applyLightingPreset(presetKey) {
+      currentPreset = presetKey;
+      const p = lightingPresets[presetKey];
+      ambientLight.color.setHex(p.ambient);
+      ambientLight.intensity = p.ambientInt * userLightMultiplier;
+
+      sunLight.color.setHex(p.sun);
+      sunLight.intensity = p.sunInt * userLightMultiplier;
+
+      waterTopLight.color.setHex(p.water);
+      scene.fog.color.setHex(p.fog);
+      scene.fog.density = p.fogDensity;
+      renderer.setClearColor(p.fog);
+      renderer.toneMappingExposure = p.exposure;
+    }
+
+    applyLightingPreset('day');
+
+    /* ==========================================================================
+       4. 수조 구조 & 하드스케이프 (수조 유리, 바닥재, 유목, 바위, 러버덕)
+       ========================================================================== */
+    const interactiveObjects = []; // 레이캐스터 피킹 등록 배열
+
+    // 4-1. 수족관 유리벽 및 프레임
+    const tankWidth = 36;
+    const tankHeight = 18;
+    const tankDepth = 20;
+
+    // 유리 재질
+    const glassMat = new THREE.MeshPhysicalMaterial({
+      color: 0xdaf0ff,
+      transparent: true,
+      opacity: 0.12,
+      roughness: 0.05,
+      metalness: 0.1,
+      transmission: 0.85,
+      ior: 1.33,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+
+    const tankGeo = new THREE.BoxGeometry(tankWidth, tankHeight, tankDepth);
+    const tankMesh = new THREE.Mesh(tankGeo, glassMat);
+    tankMesh.position.set(0, tankHeight / 2, 0);
+    scene.add(tankMesh);
+
+    // 수조 모서리 블랙 프레임
+    const frameGeo = new THREE.BoxGeometry(tankWidth + 0.3, tankHeight + 0.3, tankDepth + 0.3);
+    const frameEdges = new THREE.EdgesGeometry(frameGeo);
+    const frameLineMat = new THREE.LineBasicMaterial({ color: 0x111c24, linewidth: 2 });
+    const frameMesh = new THREE.LineSegments(frameEdges, frameLineMat);
+    frameMesh.position.set(0, tankHeight / 2, 0);
+    scene.add(frameMesh);
+
+    // 수면 메쉬
+    const waterSurfaceGeo = new THREE.PlaneGeometry(tankWidth - 0.2, tankDepth - 0.2, 32, 32);
+    const waterSurfaceMat = new THREE.MeshStandardMaterial({
+      color: 0x3a86ff,
+      roughness: 0.1,
+      metalness: 0.6,
+      transparent: true,
+      opacity: 0.55,
+      side: THREE.DoubleSide
+    });
+    const waterSurface = new THREE.Mesh(waterSurfaceGeo, waterSurfaceMat);
+    waterSurface.rotation.x = -Math.PI / 2;
+    waterSurface.position.set(0, tankHeight - 0.2, 0);
+    scene.add(waterSurface);
+
+    // 4-2. 듀얼 바닥재 (모래 + 소일)
+    const sandTex = createSandTexture();
+    const soilTex = createSoilTexture();
+    const rockTex = createRockTexture();
+    const mossTex = createMossTexture();
+
+    // 바닥 지형 (약간의 높낮이 언덕)
+    const groundGeo = new THREE.PlaneGeometry(tankWidth - 0.4, tankDepth - 0.4, 64, 48);
+    groundGeo.rotateX(-Math.PI / 2);
+
+    const pos = groundGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const vx = pos.getX(i);
+      const vz = pos.getZ(i);
+      // 좌측 유목/암석 부근 언덕 높이 상승, 중앙 골짜기, 우측 소일 언덕
+      let h = Math.sin(vx * 0.15) * 0.5 + Math.cos(vz * 0.2) * 0.4;
+      if (vx < -5) h += (Math.abs(vx + 5) * 0.25); // 좌측 마운드
+      if (vx > 6) h += ((vx - 6) * 0.15); // 우측 마운드
+      pos.setY(i, Math.max(0, h));
+    }
+    groundGeo.computeVertexNormals();
+
+    const groundMat = new THREE.MeshStandardMaterial({
+      map: soilTex,
+      roughness: 0.9,
+      metalness: 0.05
+    });
+    const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+    groundMesh.receiveShadow = true;
+    groundMesh.position.y = 0.05;
+    scene.add(groundMesh);
+
+    // 전경 샌드존 (좌측 전경 reference.jpg의 밝은 모래밭)
+    const sandGroundGeo = new THREE.PlaneGeometry(16, 7, 32, 16);
+    sandGroundGeo.rotateX(-Math.PI / 2);
+    const sandMesh = new THREE.Mesh(sandGroundGeo, new THREE.MeshStandardMaterial({
+      map: sandTex,
+      roughness: 0.85,
+      metalness: 0.05
+    }));
+    sandMesh.position.set(-9.5, 0.12, 6.2);
+    sandMesh.receiveShadow = true;
+    scene.add(sandMesh);
+
+    // 4-3. 중앙 판상형 슬레이트 록 선반 (Slate Rock Shelf)
+    // reference.jpg의 시그니처 층계형 수평 암석
+    const slateGroup = new THREE.Group();
+    const slateLayers = [
+      { w: 9.0, d: 6.0, h: 0.85, x: 7.5, y: 1.8, z: 2.0, rotY: 0.1, rotZ: -0.05 },
+      { w: 8.2, d: 5.5, h: 0.75, x: 7.2, y: 2.5, z: 1.8, rotY: -0.08, rotZ: 0.02 },
+      { w: 7.0, d: 4.8, h: 0.80, x: 6.8, y: 3.2, z: 1.5, rotY: 0.05, rotZ: -0.03 },
+      { w: 5.8, d: 4.2, h: 0.70, x: 6.2, y: 3.9, z: 1.2, rotY: -0.03, rotZ: 0.0 },
+      { w: 4.5, d: 3.5, h: 0.65, x: 5.4, y: 4.5, z: 1.0, rotY: 0.12, rotZ: 0.02 },
+      { w: 3.2, d: 2.8, h: 0.60, x: 4.5, y: 5.0, z: 0.8, rotY: 0.04, rotZ: -0.02 } // 러버덕이 놓일 최상단 선반
+    ];
+
+    const slateMat = new THREE.MeshStandardMaterial({
+      map: rockTex,
+      roughness: 0.75,
+      metalness: 0.15
+    });
+
+    slateLayers.forEach(layer => {
+      const geo = new THREE.BoxGeometry(layer.w, layer.h, layer.d, 6, 2, 6);
+      // 자연스러운 가장자리 노이즈 변형
+      const p = geo.attributes.position;
+      for (let i = 0; i < p.count; i++) {
+        p.setX(i, p.getX(i) + (Math.random() - 0.5) * 0.25);
+        p.setY(i, p.getY(i) + (Math.random() - 0.5) * 0.1);
+        p.setZ(i, p.getZ(i) + (Math.random() - 0.5) * 0.25);
+      }
+      geo.computeVertexNormals();
+
+      const mesh = new THREE.Mesh(geo, slateMat);
+      mesh.position.set(layer.x, layer.y, layer.z);
+      mesh.rotation.set(0, layer.rotY, layer.rotZ);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      slateGroup.add(mesh);
+    });
+
+    slateGroup.userData = {
+      type: 'slate',
+      title: '판상형 슬레이트 록 (Slate Rock)',
+      quote: '“바위는 파도를 탓하지 않는다. 그저 묵묵히 품을 뿐이다.”',
+      author: '— 동양의 격언',
+      desc: '층층이 쌓인 시간의 무게 속에서 흔들리지 않는 굳건함과 영원한 침묵의 지혜를 전해줍니다.'
+    };
+    scene.add(slateGroup);
+    interactiveObjects.push(slateGroup);
+
+    // 4-4. 좌측 거대 암석 및 모스 덤불
+    const rockGroup = new THREE.Group();
+    const bigRocks = [
+      { r: 3.8, x: -10, y: 2.8, z: 1.0, scale: [1.2, 1.4, 1.0] },
+      { r: 2.8, x: -6.5, y: 2.0, z: 3.0, scale: [1.0, 1.1, 1.3] },
+      { r: 2.4, x: -3.5, y: 1.5, z: 4.5, scale: [1.1, 0.9, 1.0] },
+      { r: 3.0, x: -5.0, y: 2.2, z: -2.5, scale: [1.3, 1.2, 0.9] }
+    ];
+
+    bigRocks.forEach(rock => {
+      const geo = new THREE.DodecahedronGeometry(rock.r, 2);
+      const p = geo.attributes.position;
+      for (let i = 0; i < p.count; i++) {
+        const v = new THREE.Vector3(p.getX(i), p.getY(i), p.getZ(i));
+        v.multiplyScalar(1 + (Math.random() - 0.5) * 0.22);
+        p.setXYZ(i, v.x, v.y, v.z);
+      }
+      geo.computeVertexNormals();
+
+      const mesh = new THREE.Mesh(geo, slateMat);
+      mesh.position.set(rock.x, rock.y, rock.z);
+      mesh.scale.set(...rock.scale);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      rockGroup.add(mesh);
+
+      // 상단 모스 패치
+      const mossGeo = new THREE.SphereGeometry(rock.r * 0.75, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5);
+      const mossMesh = new THREE.Mesh(mossGeo, new THREE.MeshStandardMaterial({
+        map: mossTex,
+        roughness: 0.95,
+        color: 0x4a7c36
+      }));
+      mossMesh.position.set(rock.x, rock.y + rock.r * 0.65, rock.z);
+      mossMesh.scale.set(rock.scale[0] * 1.05, rock.scale[1] * 0.6, rock.scale[2] * 1.05);
+      rockGroup.add(mossMesh);
+    });
+
+    rockGroup.userData = {
+      type: 'rock',
+      title: '모스 활착 기암괴석 (Aqua Rock & Moss)',
+      quote: '“흐르는 물은 썩지 아니하고, 바위를 어루만지는 이끼는 세월을 두려워하지 않는다.”',
+      author: '— 장자(莊子)',
+      desc: '자연의 세월이 빚어낸 숭고함과 생명력이 공존하는 생태계의 든든한 초석입니다.'
+    };
+    scene.add(rockGroup);
+    interactiveObjects.push(rockGroup);
+
+    // 4-5. 좌측 얽힌 유목 뿌리 시스템 (Driftwood Roots)
+    const driftwoodGroup = new THREE.Group();
+    const woodMat = new THREE.MeshStandardMaterial({
+      color: 0x422f22,
+      roughness: 0.8,
+      metalness: 0.05
+    });
+
+    // 베이스 주 기둥에서 뻗어나가는 뿌리 가지 곡선들
+    const rootCurves = [
+      [ new THREE.Vector3(-10, 16, -2), new THREE.Vector3(-9, 11, -1), new THREE.Vector3(-8, 6, 1), new THREE.Vector3(-6, 2, 3), new THREE.Vector3(-4, 0.5, 4.5) ],
+      [ new THREE.Vector3(-9, 12, -1.5), new THREE.Vector3(-7, 9, 0), new THREE.Vector3(-4.5, 6, 1.5), new THREE.Vector3(-2.5, 3.5, 2.8), new THREE.Vector3(-0.5, 1.2, 3.2) ],
+      [ new THREE.Vector3(-9, 11, -1), new THREE.Vector3(-7.5, 8, -3), new THREE.Vector3(-5, 4, -4), new THREE.Vector3(-3, 1, -4.5) ],
+      [ new THREE.Vector3(-8, 7, 0.5), new THREE.Vector3(-6, 5, 2), new THREE.Vector3(-5, 2, 4), new THREE.Vector3(-3.5, 0.4, 5) ],
+      [ new THREE.Vector3(-7, 9, 0), new THREE.Vector3(-5, 7.5, -1), new THREE.Vector3(-3, 6, 0.5), new THREE.Vector3(-1.5, 4, 1.2), new THREE.Vector3(1.0, 2, 1.5) ],
+      [ new THREE.Vector3(-10, 15, -2), new THREE.Vector3(-12, 11, -3), new THREE.Vector3(-13, 6, -1), new THREE.Vector3(-12.5, 1.5, 1) ]
+    ];
+
+    rootCurves.forEach((pts, idx) => {
+      const curve = new THREE.CatmullRomCurve3(pts);
+      const radius = 0.55 - idx * 0.06;
+      const tubeGeo = new THREE.TubeGeometry(curve, 32, Math.max(0.18, radius), 8, false);
+      const tubeMesh = new THREE.Mesh(tubeGeo, woodMat);
+      tubeMesh.castShadow = true;
+      tubeMesh.receiveShadow = true;
+      driftwoodGroup.add(tubeMesh);
+    });
+
+    driftwoodGroup.userData = {
+      type: 'wood',
+      title: '수중 유목 뿌리 (Driftwood Roots)',
+      quote: '“나무는 거친 폭풍을 겪으며 비로소 자신의 뿌리를 더 깊고 단단하게 내린다.”',
+      author: '— 프리드리히 니체',
+      desc: '물속에서 시간을 머금으며 수중 생물들의 안식처이자 아름다운 쉼터가 되어주는 유목입니다.'
+    };
+    scene.add(driftwoodGroup);
+    interactiveObjects.push(driftwoodGroup);
+
+    // 4-6. 시그니처 노란색 러버덕 (Rubber Duck - reference.jpg 바위 위)
+    const duckGroup = new THREE.Group();
+    const duckYellowMat = new THREE.MeshStandardMaterial({
+      color: 0xffd000,
+      roughness: 0.25,
+      metalness: 0.1
+    });
+    const duckBeakMat = new THREE.MeshStandardMaterial({
+      color: 0xff6600,
+      roughness: 0.35
+    });
+    const duckEyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+
+    // 몸통
+    const duckBodyGeo = new THREE.SphereGeometry(0.55, 16, 16);
+    duckBodyGeo.scale(1.2, 0.85, 1.0);
+    const duckBody = new THREE.Mesh(duckBodyGeo, duckYellowMat);
+    duckBody.castShadow = true;
+    duckGroup.add(duckBody);
+
+    // 꼬리
+    const duckTailGeo = new THREE.ConeGeometry(0.2, 0.4, 8);
+    duckTailGeo.rotateZ(Math.PI / 3);
+    const duckTail = new THREE.Mesh(duckTailGeo, duckYellowMat);
+    duckTail.position.set(-0.6, 0.25, 0);
+    duckGroup.add(duckTail);
+
+    // 머리
+    const duckHeadGeo = new THREE.SphereGeometry(0.38, 16, 16);
+    const duckHead = new THREE.Mesh(duckHeadGeo, duckYellowMat);
+    duckHead.position.set(0.4, 0.52, 0);
+    duckHead.castShadow = true;
+    duckGroup.add(duckHead);
+
+    // 부리
+    const duckBeakGeo = new THREE.ConeGeometry(0.18, 0.35, 10);
+    duckBeakGeo.rotateZ(-Math.PI / 2);
+    const duckBeak = new THREE.Mesh(duckBeakGeo, duckBeakMat);
+    duckBeak.position.set(0.78, 0.45, 0);
+    duckGroup.add(duckBeak);
+
+    // 눈 (좌우)
+    const duckEyeGeo = new THREE.SphereGeometry(0.06, 8, 8);
+    const duckEyeL = new THREE.Mesh(duckEyeGeo, duckEyeMat);
+    duckEyeL.position.set(0.56, 0.62, 0.25);
+    const duckEyeR = new THREE.Mesh(duckEyeGeo, duckEyeMat);
+    duckEyeR.position.set(0.56, 0.62, -0.25);
+    duckGroup.add(duckEyeL);
+    duckGroup.add(duckEyeR);
+
+    // 바위 선반 위에 배치
+    duckGroup.position.set(4.3, 5.7, 0.9);
+    duckGroup.rotation.y = -Math.PI / 4;
+    duckGroup.scale.set(1.3, 1.3, 1.3);
+
+    duckGroup.userData = {
+      type: 'duck',
+      title: '바위 선반 위의 러버덕 (Little Rubber Duck)',
+      quote: '“인생은 너무 심각하게 받아들이기엔 너무나 소중하고 유쾌한 여정이다.”',
+      author: '— 오스카 와일드',
+      desc: '고요한 수족관 속 판상 바위 선반에 올라앉아 미소를 선사하는 유쾌한 친구입니다.'
+    };
+    scene.add(duckGroup);
+    interactiveObjects.push(duckGroup);
+
+    /* ==========================================================================
+       5. 수초 시스템 (헤어글라스 잔디, 펄그라스 덤불, 붉은색 로탈라 군락)
+       ========================================================================== */
+    const plantsGroup = new THREE.Group();
+
+    // 5-1. 전경 헤어글라스 (전경 잔디 수초 - InstancedMesh로 1,200개 식재)
+    const grassCount = 1200;
+    const grassBladeGeo = new THREE.ConeGeometry(0.06, 1.4, 4);
+    grassBladeGeo.translate(0, 0.7, 0); // 밑변 중심축 맞춤
+    const grassMat = new THREE.MeshStandardMaterial({
+      color: 0x58a82d,
+      roughness: 0.6,
+      metalness: 0.1
+    });
+
+    const grassInstanced = new THREE.InstancedMesh(grassBladeGeo, grassMat, grassCount);
+    grassInstanced.castShadow = true;
+    grassInstanced.receiveShadow = true;
+
+    const dummy = new THREE.Object3D();
+    const grassData = [];
+
+    for (let i = 0; i < grassCount; i++) {
+      // 바닥 전경 및 중앙 위주 배치
+      let gx = (Math.random() - 0.5) * 32;
+      let gz = 1.0 + Math.random() * 7.5;
+      let gy = 0.1;
+
+      // 좌측 샌드 부근 높이 보정
+      if (gx < -5) gy = 0.3 + Math.random() * 0.4;
+      else if (gx > 3 && gx < 11 && gz < 5) {
+        // 슬레이트 록 바로 밑 언덕
+        gy = 0.8 + Math.random() * 0.5;
+      }
+
+      const rotZ = (Math.random() - 0.5) * 0.35;
+      const rotX = (Math.random() - 0.5) * 0.35;
+      const scaleY = 0.6 + Math.random() * 0.8;
+
+      dummy.position.set(gx, gy, gz);
+      dummy.rotation.set(rotX, Math.random() * Math.PI * 2, rotZ);
+      dummy.scale.set(0.8 + Math.random() * 0.5, scaleY, 0.8 + Math.random() * 0.5);
+      dummy.updateMatrix();
+      grassInstanced.setMatrixAt(i, dummy.matrix);
+
+      grassData.push({
+        basePos: new THREE.Vector3(gx, gy, gz),
+        baseRot: new THREE.Euler(rotX, dummy.rotation.y, rotZ),
+        scale: dummy.scale.clone(),
+        phase: Math.random() * Math.PI * 2,
+        speed: 1.5 + Math.random() * 1.5
+      });
+    }
+    grassInstanced.instanceMatrix.needsUpdate = true;
+    plantsGroup.add(grassInstanced);
+
+    // 5-2. 좌측 풍성한 연두색 펄그라스 덤불 (Monte Carlo / Pearl Grass)
+    const pearlMat = new THREE.MeshStandardMaterial({
+      color: 0x76c843,
+      roughness: 0.7,
+      metalness: 0.05
+    });
+
+    const pearlClumps = [
+      { x: -13, y: 3.5, z: 2, scale: 2.2 },
+      { x: -11, y: 4.8, z: 0.5, scale: 2.6 },
+      { x: -8.5, y: 5.5, z: -1, scale: 3.0 },
+      { x: -6.0, y: 4.5, z: 1.5, scale: 2.4 },
+      { x: -4.0, y: 3.2, z: 0.5, scale: 2.0 },
+      { x: -2.5, y: 2.0, z: 2.0, scale: 1.8 }
+    ];
+
+    const pearlMeshes = [];
+    pearlClumps.forEach(clump => {
+      const geo = new THREE.SphereGeometry(clump.scale, 14, 10);
+      const p = geo.attributes.position;
+      for (let i = 0; i < p.count; i++) {
+        p.setY(i, p.getY(i) * 0.75 + (Math.random() - 0.5) * 0.4);
+        p.setX(i, p.getX(i) + (Math.random() - 0.5) * 0.4);
+        p.setZ(i, p.getZ(i) + (Math.random() - 0.5) * 0.4);
+      }
+      geo.computeVertexNormals();
+      const mesh = new THREE.Mesh(geo, pearlMat);
+      mesh.position.set(clump.x, clump.y, clump.z);
+      mesh.castShadow = true;
+      plantsGroup.add(mesh);
+      pearlMeshes.push({ mesh, baseY: clump.y, phase: Math.random() * Math.PI });
+    });
+
+    // 5-3. 우측 강렬한 붉은색 수초 군락 (Rotala H'ra / Ludwigia)
+    // reference.jpg 우측 전체를 가득 채운 붉은색 유경 수초 줄기들
+    const rotalaGroup = new THREE.Group();
+    const rotalaStemMat = new THREE.MeshStandardMaterial({
+      color: 0xb82e3d,
+      roughness: 0.6,
+      metalness: 0.1
+    });
+    const rotalaLeafMat = new THREE.MeshStandardMaterial({
+      color: 0xd93848,
+      roughness: 0.5,
+      metalness: 0.1,
+      side: THREE.DoubleSide
+    });
+
+    const rotalaStems = [];
+    const rotalaCount = 45;
+
+    for (let s = 0; s < rotalaCount; s++) {
+      const stemGroup = new THREE.Group();
+      const sx = 10.5 + (Math.random() - 0.5) * 9.5;
+      const sz = -5.0 + (Math.random() - 0.5) * 8.0;
+      const stemHeight = 9.0 + Math.random() * 7.5;
+
+      // 줄기 실린더
+      const stemGeo = new THREE.CylinderGeometry(0.08, 0.1, stemHeight, 6);
+      stemGeo.translate(0, stemHeight / 2, 0);
+      const stemMesh = new THREE.Mesh(stemGeo, rotalaStemMat);
+      stemGroup.add(stemMesh);
+
+      // 줄기를 따라 층층이 달린 붉은 잎사귀들
+      const leafCount = Math.floor(stemHeight * 2.2);
+      for (let l = 0; l < leafCount; l++) {
+        const ly = 1.0 + (l / leafCount) * (stemHeight - 1.2);
+        const leafGeo = new THREE.PlaneGeometry(0.6, 1.1);
+        leafGeo.rotateX(Math.PI / 3);
+        const leafMesh = new THREE.Mesh(leafGeo, rotalaLeafMat);
+        leafMesh.position.set(0, ly, 0);
+        leafMesh.rotation.y = l * 1.6 + Math.random() * 0.4;
+        leafMesh.rotation.z = (Math.random() - 0.5) * 0.3;
+        stemGroup.add(leafMesh);
+      }
+
+      stemGroup.position.set(sx, 0.2, sz);
+      rotalaGroup.add(stemGroup);
+
+      rotalaStems.push({
+        group: stemGroup,
+        baseRotZ: (Math.random() - 0.5) * 0.12,
+        phase: Math.random() * Math.PI * 2,
+        height: stemHeight
+      });
+    }
+    plantsGroup.add(rotalaGroup);
+
+    plantsGroup.userData = {
+      type: 'plants',
+      title: '수초 군락 (Aquatic Plants)',
+      quote: '“바람과 물살에 유연하게 몸을 맡기는 풀잎은 결코 부러지지 않는다.”',
+      author: '— 노자(老子)',
+      desc: '붉은 로탈라와 싱그러운 펄그라스, 잔디 수초들이 빚어내는 살아 숨 쉬는 숲입니다.'
+    };
+    scene.add(plantsGroup);
+    interactiveObjects.push(plantsGroup);
+
+    /* ==========================================================================
+       6. 공기 기포 파티클 시스템 (Air Bubbles)
+       ========================================================================== */
+    const bubbleCount = 100;
+    const bubbleGeo = new THREE.SphereGeometry(0.16, 10, 8);
+    const bubbleMat = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      transmission: 0.92,
+      opacity: 0.65,
+      roughness: 0.05,
+      metalness: 0.1,
+      ior: 1.1
+    });
+
+    const bubbleInstanced = new THREE.InstancedMesh(bubbleGeo, bubbleMat, bubbleCount);
+    const bubbleDummy = new THREE.Object3D();
+    const bubbleData = [];
+
+    function resetBubble(b) {
+      b.x = (Math.random() - 0.5) * 30;
+      b.z = (Math.random() - 0.5) * 16;
+      b.y = 0.2 + Math.random() * 1.5;
+      b.speed = 2.0 + Math.random() * 3.5;
+      b.wobbleSpeed = 3.0 + Math.random() * 4.0;
+      b.wobbleAmp = 0.08 + Math.random() * 0.15;
+      b.phase = Math.random() * Math.PI * 2;
+      b.scale = 0.4 + Math.random() * 0.9;
+    }
+
+    for (let i = 0; i < bubbleCount; i++) {
+      const b = {};
+      resetBubble(b);
+      b.y = Math.random() * tankHeight; // 초기 분포
+      bubbleData.push(b);
+
+      bubbleDummy.position.set(b.x, b.y, b.z);
+      bubbleDummy.scale.set(b.scale, b.scale, b.scale);
+      bubbleDummy.updateMatrix();
+      bubbleInstanced.setMatrixAt(i, bubbleDummy.matrix);
+    }
+    bubbleInstanced.instanceMatrix.needsUpdate = true;
+    scene.add(bubbleInstanced);
+
+    /* ==========================================================================
+       7. 물고기 시스템 (3종 이상, 3D 모델링 및 지느러미 애니메이션, AI 유영)
+       ========================================================================== */
+    const fishList = [];
+
+    // 7-1. 레드 베타 (Red Betta Splendens - reference.jpg 우측 상단 메인 피시)
+    class RedBetta {
+      constructor() {
+        this.group = new THREE.Group();
+        this.velocity = new THREE.Vector3(-1, 0.1, 0.2).normalize();
+        this.speed = 2.2;
+        this.targetPos = new THREE.Vector3(7, 13.5, 0);
+        this.changeTimer = 0;
+
+        this.initMesh();
+        this.group.position.set(9, 14, 2); // 우측 상단 위치
+        scene.add(this.group);
+        interactiveObjects.push(this.group);
+        fishList.push(this);
+
+        this.group.userData = {
+          type: 'betta',
+          title: '하프문 레드 베타 (Red Betta)',
+          quote: '“홀로 유영하는 자는 모든 파도의 주인이 된다.”',
+          author: '— 프리드리히 니체',
+          desc: '붉은 비단결 같은 웅장한 지느러미를 펄럭이며 수족관 상층을 지배하는 고귀한 아름다움입니다.'
+        };
+      }
+
+      initMesh() {
+        const bodyMat = new THREE.MeshStandardMaterial({
+          color: 0xbd162c,
+          roughness: 0.35,
+          metalness: 0.2
+        });
+
+        const finMat = new THREE.MeshStandardMaterial({
+          color: 0xd90429,
+          roughness: 0.45,
+          metalness: 0.15,
+          transparent: true,
+          opacity: 0.88,
+          side: THREE.DoubleSide
+        });
+
+        // 1) 몸통 (유선형 바디)
+        const bodyGeo = new THREE.SphereGeometry(1.0, 16, 12);
+        bodyGeo.scale(2.2, 0.95, 0.45);
+        this.bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+        this.bodyMesh.castShadow = true;
+        this.group.add(this.bodyMesh);
+
+        // 머리 앞부분
+        const headGeo = new THREE.ConeGeometry(0.7, 1.2, 12);
+        headGeo.rotateZ(-Math.PI / 2);
+        headGeo.scale(1.0, 1.3, 0.5);
+        const headMesh = new THREE.Mesh(headGeo, bodyMat);
+        headMesh.position.set(1.5, -0.05, 0);
+        this.group.add(headMesh);
+
+        // 눈
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
+        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), eyeMat);
+        eyeL.position.set(1.5, 0.2, 0.3);
+        const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), eyeMat);
+        eyeR.position.set(1.5, 0.2, -0.3);
+        this.group.add(eyeL);
+        this.group.add(eyeR);
+
+        // 2) 웅장한 하프문 꼬리지느러미 (뒤쪽)
+        const tailGeo = new THREE.PlaneGeometry(3.6, 3.4, 16, 12);
+        tailGeo.translate(-1.8, 0, 0);
+        this.tailMesh = new THREE.Mesh(tailGeo, finMat);
+        this.tailMesh.position.set(-1.8, 0.1, 0);
+        this.group.add(this.tailMesh);
+
+        // 3) 등지느러미 (Dorsal Fin)
+        const dorsalGeo = new THREE.PlaneGeometry(2.4, 1.8, 12, 8);
+        dorsalGeo.translate(-0.8, 0.9, 0);
+        this.dorsalMesh = new THREE.Mesh(dorsalGeo, finMat);
+        this.dorsalMesh.position.set(-0.5, 0.7, 0);
+        this.dorsalMesh.rotation.z = -0.3;
+        this.group.add(this.dorsalMesh);
+
+        // 4) 배지느러미 & 가슴지느러미
+        const ventralGeo = new THREE.PlaneGeometry(1.6, 2.2, 10, 8);
+        ventralGeo.translate(-0.4, -1.1, 0);
+        this.ventralMesh = new THREE.Mesh(ventralGeo, finMat);
+        this.ventralMesh.position.set(0.2, -0.6, 0);
+        this.ventralMesh.rotation.z = 0.4;
+        this.group.add(this.ventralMesh);
+
+        // 전체 스케일
+        this.group.scale.set(1.1, 1.1, 1.1);
+      }
+
+      update(delta, time, speedMult) {
+        this.changeTimer -= delta;
+        if (this.changeTimer <= 0) {
+          this.changeTimer = 3 + Math.random() * 5;
+          // 상층 위주의 랜덤 목표 지점
+          this.targetPos.set(
+            (Math.random() - 0.5) * 26,
+            11 + Math.random() * 5.5,
+            (Math.random() - 0.5) * 14
+          );
+        }
+
+        // 목표 방향으로 부드럽게 선회
+        const desired = new THREE.Vector3().subVectors(this.targetPos, this.group.position).normalize();
+        this.velocity.lerp(desired, 0.035);
+        this.velocity.normalize();
+
+        const moveDist = this.speed * speedMult * delta;
+        this.group.position.addScaledVector(this.velocity, moveDist);
+
+        // 수조 경계 체크
+        if (this.group.position.x > 15) this.velocity.x = -Math.abs(this.velocity.x);
+        if (this.group.position.x < -15) this.velocity.x = Math.abs(this.velocity.x);
+        if (this.group.position.y > 16.5) this.velocity.y = -Math.abs(this.velocity.y);
+        if (this.group.position.y < 9.5) this.velocity.y = Math.abs(this.velocity.y);
+        if (this.group.position.z > 8) this.velocity.z = -Math.abs(this.velocity.z);
+        if (this.group.position.z < -8) this.velocity.z = Math.abs(this.velocity.z);
+
+        // 진행 방향을 향해 회전
+        const lookTarget = this.group.position.clone().add(this.velocity);
+        this.group.lookAt(lookTarget);
+
+        // 화려한 지느러미 파동 애니메이션 (버텍스 웨이브)
+        const waveSpeed = time * 5.0 * speedMult;
+        const tailPos = this.tailMesh.geometry.attributes.position;
+        for (let i = 0; i < tailPos.count; i++) {
+          const x = tailPos.getX(i);
+          const zOffset = Math.sin(waveSpeed + x * 2.2) * (Math.abs(x) * 0.28);
+          tailPos.setZ(i, zOffset);
+        }
+        this.tailMesh.geometry.attributes.position.needsUpdate = true;
+
+        const dorsalPos = this.dorsalMesh.geometry.attributes.position;
+        for (let i = 0; i < dorsalPos.count; i++) {
+          const x = dorsalPos.getX(i);
+          const zOffset = Math.sin(waveSpeed * 0.9 + x * 2.0) * 0.16;
+          dorsalPos.setZ(i, zOffset);
+        }
+        this.dorsalMesh.geometry.attributes.position.needsUpdate = true;
+
+        // 몸통 살랑거림
+        this.bodyMesh.rotation.y = Math.sin(waveSpeed * 0.8) * 0.12;
+      }
+    }
+
+    // 7-2. 카디널/네온 테트라 무리 (Neon Tetra - Boids 군영 유영 18마리)
+    class TetraSchool {
+      constructor(count = 18) {
+        this.count = count;
+        this.boids = [];
+
+        const tetraMat = new THREE.MeshStandardMaterial({
+          color: 0x00f5d4,
+          roughness: 0.3,
+          metalness: 0.4
+        });
+        const redBellyMat = new THREE.MeshStandardMaterial({
+          color: 0xff0054,
+          roughness: 0.35
+        });
+        const finMat = new THREE.MeshBasicMaterial({
+          color: 0xe0fbfc,
+          transparent: true,
+          opacity: 0.65,
+          side: THREE.DoubleSide
+        });
+
+        // 테트라 단일 메쉬 템플릿
+        const tetraTemplate = new THREE.Group();
+
+        // 몸통 상단 (형광 블루)
+        const upperGeo = new THREE.ConeGeometry(0.35, 1.6, 8);
+        upperGeo.rotateZ(-Math.PI / 2);
+        upperGeo.scale(1.0, 0.6, 0.4);
+        const upperMesh = new THREE.Mesh(upperGeo, tetraMat);
+        upperMesh.position.set(0, 0.1, 0);
+        tetraTemplate.add(upperMesh);
+
+        // 배 하단 (선명한 레드)
+        const lowerGeo = new THREE.ConeGeometry(0.28, 1.4, 8);
+        lowerGeo.rotateZ(-Math.PI / 2);
+        lowerGeo.scale(0.9, 0.5, 0.35);
+        const lowerMesh = new THREE.Mesh(lowerGeo, redBellyMat);
+        lowerMesh.position.set(-0.1, -0.12, 0);
+        tetraTemplate.add(lowerMesh);
+
+        // 꼬리지느러미
+        const tailGeo = new THREE.BufferGeometry();
+        const vertices = new Float32Array([
+          0, 0, 0,
+          -0.8, 0.5, 0,
+          -0.8, -0.5, 0
+        ]);
+        tailGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+        const tailMesh = new THREE.Mesh(tailGeo, finMat);
+        tailMesh.position.set(-0.8, 0, 0);
+        tetraTemplate.add(tailMesh);
+
+        // 18마리 복제 생성
+        for (let i = 0; i < this.count; i++) {
+          const fish = tetraTemplate.clone();
+          const startPos = new THREE.Vector3(
+            (Math.random() - 0.5) * 16,
+            5.0 + Math.random() * 6.5,
+            (Math.random() - 0.5) * 10
+          );
+          fish.position.copy(startPos);
+          fish.scale.set(0.9, 0.9, 0.9);
+
+          const boid = {
+            mesh: fish,
+            tailMesh: fish.children[2],
+            position: fish.position,
+            velocity: new THREE.Vector3((Math.random() - 0.5), (Math.random() - 0.5) * 0.3, (Math.random() - 0.5)).normalize().multiplyScalar(3.5),
+            acceleration: new THREE.Vector3(),
+            phase: Math.random() * Math.PI * 2
+          };
+
+          fish.userData = {
+            type: 'tetra',
+            title: '카디널/네온 테트라 (Neon Tetra School)',
+            quote: '“작은 물방울들이 모여 거대한 대양을 이루듯, 조화로운 무리는 세상을 비춘다.”',
+            author: '— 생태학적 명언',
+            desc: '선명한 일렉트릭 블루와 레드 줄무늬를 뽐내며 완벽한 호흡으로 함께 군영을 이루는 열대어입니다.'
+          };
+
+          scene.add(fish);
+          interactiveObjects.push(fish);
+          this.boids.push(boid);
+        }
+
+        fishList.push(this);
+      }
+
+      update(delta, time, speedMult) {
+        const schoolCenter = new THREE.Vector3();
+        const schoolVelocity = new THREE.Vector3();
+
+        for (let b of this.boids) {
+          schoolCenter.add(b.position);
+          schoolVelocity.add(b.velocity);
+        }
+        schoolCenter.divideScalar(this.count);
+        schoolVelocity.divideScalar(this.count);
+
+        for (let i = 0; i < this.count; i++) {
+          const b = this.boids[i];
+          b.acceleration.set(0, 0, 0);
+
+          // 1. 응집 (Cohesion)
+          const cohesion = new THREE.Vector3().subVectors(schoolCenter, b.position).multiplyScalar(0.04);
+          b.acceleration.add(cohesion);
+
+          // 2. 정렬 (Alignment)
+          const alignment = new THREE.Vector3().subVectors(schoolVelocity, b.velocity).multiplyScalar(0.08);
+          b.acceleration.add(alignment);
+
+          // 3. 분리 (Separation)
+          for (let j = 0; j < this.count; j++) {
+            if (i === j) continue;
+            const other = this.boids[j];
+            const dist = b.position.distanceTo(other.position);
+            if (dist < 1.6 && dist > 0.001) {
+              const diff = new THREE.Vector3().subVectors(b.position, other.position).normalize().divideScalar(dist);
+              b.acceleration.add(diff.multiplyScalar(0.25));
+            }
+          }
+
+          // 4. 수조 벽 회피 경계 반발력
+          const margin = 3.0;
+          if (b.position.x > 16 - margin) b.acceleration.x -= 0.6;
+          if (b.position.x < -16 + margin) b.acceleration.x += 0.6;
+          if (b.position.y > 15 - margin) b.acceleration.y -= 0.6;
+          if (b.position.y < 3 + margin) b.acceleration.y += 0.6;
+          if (b.position.z > 9 - margin) b.acceleration.z -= 0.6;
+          if (b.position.z < -9 + margin) b.acceleration.z += 0.6;
+
+          // 속도 업데이트 및 제한
+          b.velocity.add(b.acceleration.multiplyScalar(delta * 40));
+          const currentSpeed = 3.5 * speedMult;
+          b.velocity.clampLength(currentSpeed * 0.6, currentSpeed * 1.4);
+
+          b.position.addScaledVector(b.velocity, delta);
+
+          // 헤엄 방향 바라보기
+          const lookTarget = b.position.clone().add(b.velocity);
+          b.mesh.lookAt(lookTarget);
+
+          // 꼬리 흔들림
+          if (b.tailMesh) {
+            b.tailMesh.rotation.y = Math.sin(time * 12.0 * speedMult + b.phase) * 0.45;
+          }
+        }
+      }
+    }
+
+    // 7-3. 코리도라스 (Corydoras - 바닥 탐색 귀여운 물고기 4마리)
+    class CorydorasFish {
+      constructor(count = 4) {
+        this.count = count;
+        this.cories = [];
+
+        const bodyMat = new THREE.MeshStandardMaterial({
+          color: 0xc4b7a6,
+          roughness: 0.5,
+          metalness: 0.15
+        });
+        const spotMat = new THREE.MeshStandardMaterial({
+          color: 0x2b2d42,
+          roughness: 0.6
+        });
+        const barbMat = new THREE.MeshBasicMaterial({ color: 0xe0d6c3 });
+
+        const coryTemplate = new THREE.Group();
+
+        // 통통한 유선형 몸통
+        const bodyGeo = new THREE.SphereGeometry(0.7, 12, 10);
+        bodyGeo.scale(1.6, 0.9, 0.7);
+        const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+        bodyMesh.castShadow = true;
+        coryTemplate.add(bodyMesh);
+
+        // 등 점박이 밴드 무늬
+        const spotGeo = new THREE.SphereGeometry(0.4, 8, 8);
+        spotGeo.scale(0.8, 1.1, 0.72);
+        const spotMesh = new THREE.Mesh(spotGeo, spotMat);
+        spotMesh.position.set(0.1, 0.25, 0);
+        coryTemplate.add(spotMesh);
+
+        // 주둥이 수염 (Barbel) 2개
+        const barbGeo = new THREE.CylinderGeometry(0.02, 0.04, 0.35);
+        barbGeo.rotateZ(Math.PI / 4);
+        const barbL = new THREE.Mesh(barbGeo, barbMat);
+        barbL.position.set(1.0, -0.3, 0.18);
+        const barbR = new THREE.Mesh(barbGeo, barbMat);
+        barbR.position.set(1.0, -0.3, -0.18);
+        coryTemplate.add(barbL);
+        coryTemplate.add(barbR);
+
+        // 꼬리지느러미
+        const tailGeo = new THREE.BufferGeometry();
+        const v = new Float32Array([
+          0, 0, 0,
+          -0.7, 0.4, 0,
+          -0.7, -0.4, 0
+        ]);
+        tailGeo.setAttribute('position', new THREE.BufferAttribute(v, 3));
+        const tailMesh = new THREE.Mesh(tailGeo, bodyMat);
+        tailMesh.position.set(-1.05, 0, 0);
+        coryTemplate.add(tailMesh);
+
+        // 생성
+        for (let i = 0; i < this.count; i++) {
+          const mesh = coryTemplate.clone();
+          const startX = -8 + i * 4.5 + (Math.random() - 0.5) * 3;
+          const startZ = (Math.random() - 0.5) * 12;
+          mesh.position.set(startX, 0.65, startZ);
+          mesh.scale.set(0.9, 0.9, 0.9);
+
+          const cory = {
+            mesh,
+            tailMesh: mesh.children[4],
+            target: new THREE.Vector3(startX, 0.65, startZ),
+            timer: Math.random() * 2,
+            speed: 1.8 + Math.random() * 0.8,
+            pecking: false
+          };
+
+          mesh.userData = {
+            type: 'cory',
+            title: '팬더 코리도라스 (Panda Corydoras)',
+            quote: '“가장 낮은 곳에서 흐르는 물이 결국 가장 넓은 대양을 품는다.”',
+            author: '— 노자(老子)',
+            desc: '바닥재 소일과 모래를 부지런히 더듬으며 수조 바닥의 평화와 정화를 도맡는 겸손하고 성실한 물고기입니다.'
+          };
+
+          scene.add(mesh);
+          interactiveObjects.push(mesh);
+          this.cories.push(cory);
+        }
+
+        fishList.push(this);
+      }
+
+      update(delta, time, speedMult) {
+        for (let cory of this.cories) {
+          cory.timer -= delta;
+          if (cory.timer <= 0) {
+            cory.timer = 2 + Math.random() * 4;
+            // 바닥 영역의 새로운 탐색 목표
+            cory.target.set(
+              (Math.random() - 0.5) * 28,
+              0.55 + Math.random() * 0.6,
+              (Math.random() - 0.5) * 14
+            );
+            cory.pecking = Math.random() > 0.6; // 가끔 모래 쪼아먹기
+          }
+
+          const dir = new THREE.Vector3().subVectors(cory.target, cory.mesh.position);
+          const dist = dir.length();
+
+          if (dist > 0.2) {
+            dir.normalize();
+            cory.mesh.position.addScaledVector(dir, cory.speed * speedMult * delta);
+            const lookTarget = cory.mesh.position.clone().add(dir);
+            cory.mesh.lookAt(lookTarget);
+
+            // 빠른 바닥 꼬리 파닥임
+            if (cory.tailMesh) {
+              cory.tailMesh.rotation.y = Math.sin(time * 18.0 * speedMult) * 0.5;
+            }
+          } else if (cory.pecking) {
+            // 주둥이를 바닥에 콕콕
+            cory.mesh.rotation.x = Math.sin(time * 8.0) * 0.25;
+          }
+        }
+      }
+    }
+
+    // 물고기 인스턴스화
+    const betta = new RedBetta();
+    const tetras = new TetraSchool(18);
+    const cories = new CorydorasFish(4);
+
+    /* ==========================================================================
+       8. Raycaster 오브젝트 상호작용 및 명언 팝업 시스템
+       ========================================================================== */
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    const tooltip = document.getElementById('cursor-tooltip');
+    const quoteModal = document.getElementById('quote-modal');
+    const modalTargetBadge = document.getElementById('modal-target-badge');
+    const modalQuoteText = document.getElementById('modal-quote-text');
+    const modalQuoteAuthor = document.getElementById('modal-quote-author');
+    const modalQuoteDesc = document.getElementById('modal-quote-desc');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+
+    let hoveredObject = null;
+
+    function findInteractiveParent(obj) {
+      let curr = obj;
+      while (curr) {
+        if (curr.userData && curr.userData.quote) return curr;
+        curr = curr.parent;
+      }
+      return null;
+    }
+
+    window.addEventListener('mousemove', (e) => {
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      tooltip.style.left = `${e.clientX}px`;
+      tooltip.style.top = `${e.clientY}px`;
+
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObjects(interactiveObjects, true);
+
+      if (hits.length > 0) {
+        const target = findInteractiveParent(hits[0].object);
+        if (target) {
+          hoveredObject = target;
+          document.body.style.cursor = 'pointer';
+          tooltip.style.opacity = '1';
+          tooltip.textContent = `🔍 클릭: ${target.userData.title || '오브젝트'}`;
+          return;
+        }
+      }
+      hoveredObject = null;
+      document.body.style.cursor = 'default';
+      tooltip.style.opacity = '0';
+    });
+
+    // 클릭 시 명언 모달 띄우기
+    function showQuoteForObject(obj) {
+      if (!obj || !obj.userData) return;
+      const data = obj.userData;
+      modalTargetBadge.textContent = data.title || '수족관 오브제';
+      modalQuoteText.textContent = data.quote;
+      modalQuoteAuthor.textContent = data.author;
+      modalQuoteDesc.textContent = data.desc || '';
+
+      quoteModal.classList.add('visible');
+      soundSystem.playPop();
+
+      // 오브젝트 순간 펄스 애니메이션 (스케일 업 후 복귀)
+      const origScale = obj.scale.clone();
+      obj.scale.multiplyScalar(1.2);
+      setTimeout(() => {
+        obj.scale.copy(origScale);
+      }, 250);
+    }
+
+    window.addEventListener('click', (e) => {
+      // UI 클릭 배제
+      if (e.target.closest('#header-bar') || e.target.closest('#sidebar-panel') || e.target.closest('#quote-modal')) {
+        return;
+      }
+
+      if (hoveredObject) {
+        showQuoteForObject(hoveredObject);
+      }
+    });
+
+    modalCloseBtn.addEventListener('click', () => {
+      quoteModal.classList.remove('visible');
+    });
+
+    // 무작위 명언 순환 (Q 키 또는 버튼)
+    function showRandomQuote() {
+      const validObjects = interactiveObjects.filter(o => o.userData && o.userData.quote);
+      if (validObjects.length > 0) {
+        const randObj = validObjects[Math.floor(Math.random() * validObjects.length)];
+        showQuoteForObject(randObj);
+      }
+    }
+
+    /* ==========================================================================
+       9. UI 컨트롤 및 단축키 이벤트 리스너
+       ========================================================================== */
+    // 조명 프리셋 버튼 클릭
+    document.querySelectorAll('.btn-light').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.btn-light').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyLightingPreset(btn.dataset.preset);
+        soundSystem.playPop();
+      });
+    });
+
+    // 조명 슬라이더
+    const sliderLight = document.getElementById('slider-light');
+    const lightValText = document.getElementById('light-val');
+    sliderLight.addEventListener('input', (e) => {
+      userLightMultiplier = parseFloat(e.target.value);
+      lightValText.textContent = `${userLightMultiplier.toFixed(1)}x`;
+      applyLightingPreset(currentPreset);
+    });
+
+    // 수초 및 유영 슬라이더
+    let plantWaveSpeed = 1.0;
+    let fishSwimSpeed = 1.0;
+
+    const sliderWave = document.getElementById('slider-wave');
+    const waveValText = document.getElementById('wave-val');
+    sliderWave.addEventListener('input', (e) => {
+      plantWaveSpeed = parseFloat(e.target.value);
+      waveValText.textContent = `${plantWaveSpeed.toFixed(1)}x`;
+    });
+
+    const sliderSwim = document.getElementById('slider-swim');
+    const swimValText = document.getElementById('swim-val');
+    sliderSwim.addEventListener('input', (e) => {
+      fishSwimSpeed = parseFloat(e.target.value);
+      swimValText.textContent = `${fishSwimSpeed.toFixed(1)}x`;
+    });
+
+    // 사운드 토글
+    const btnSound = document.getElementById('btn-sound');
+    btnSound.addEventListener('click', () => {
+      const active = soundSystem.toggle();
+      btnSound.classList.toggle('active', active);
+      btnSound.textContent = active ? '🔊' : '🔇';
+    });
+
+    // 일시정지 / 재생
+    let isPaused = false;
+    const btnPlay = document.getElementById('btn-play');
+    function togglePlayPause() {
+      isPaused = !isPaused;
+      btnPlay.textContent = isPaused ? '▶️' : '⏸️';
+      btnPlay.classList.toggle('active', isPaused);
+    }
+    btnPlay.addEventListener('click', togglePlayPause);
+
+    // 시점 리셋
+    const btnReset = document.getElementById('btn-reset');
+    function resetView() {
+      camera.position.set(0, 11, 33);
+      controls.target.set(0, 8.5, 0);
+      controls.update();
+      soundSystem.playPop();
+    }
+    btnReset.addEventListener('click', resetView);
+
+    // 전체화면 토글
+    const btnFullscreen = document.getElementById('btn-fullscreen');
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+    btnFullscreen.addEventListener('click', toggleFullscreen);
+
+    // 키보드 단축키 핸들러
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlayPause();
+      } else if (e.code === 'KeyR') {
+        resetView();
+      } else if (e.code === 'KeyQ') {
+        showRandomQuote();
+      } else if (e.code === 'KeyF') {
+        toggleFullscreen();
+      } else if (e.code === 'KeyL') {
+        // 프리셋 순환
+        const presets = ['day', 'sunset', 'night', 'neon'];
+        const nextIdx = (presets.indexOf(currentPreset) + 1) % presets.length;
+        const nextPreset = presets[nextIdx];
+        document.querySelectorAll('.btn-light').forEach(b => {
+          b.classList.toggle('active', b.dataset.preset === nextPreset);
+        });
+        applyLightingPreset(nextPreset);
+      } else if (e.code === 'KeyH') {
+        // UI 보이기/숨기기 (감상 모드)
+        const header = document.getElementById('header-bar');
+        const sidebar = document.getElementById('sidebar-panel');
+        const footer = document.getElementById('footer-guide');
+        const hidden = header.style.display === 'none';
+        header.style.display = hidden ? 'flex' : 'none';
+        sidebar.style.display = hidden ? 'block' : 'none';
+        footer.style.display = hidden ? 'flex' : 'none';
+      } else if (e.code === 'Escape') {
+        quoteModal.classList.remove('visible');
+      }
+    });
+
+    // 창 리사이즈
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    /* ==========================================================================
+       10. 메인 애니메이션 루프 (rAF) & 렌더 파이프라인
+       ========================================================================== */
+    const clock = new THREE.Clock();
+    let frameCount = 0;
+    let lastFpsTime = performance.now();
+    const fpsElem = document.getElementById('stat-fps');
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = Math.min(clock.getDelta(), 0.1);
+      const time = clock.getElapsedTime();
+
+      // FPS 측정
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsTime >= 1000) {
+        fpsElem.textContent = Math.round((frameCount * 1000) / (now - lastFpsTime));
+        frameCount = 0;
+        lastFpsTime = now;
+      }
+
+      controls.update();
+
+      if (!isPaused) {
+        // 1) 코스틱 텍스처 업데이트
+        causticsSystem.update(time);
+
+        // 2) 수면 물결 애니메이션
+        const waterPos = waterSurface.geometry.attributes.position;
+        for (let i = 0; i < waterPos.count; i++) {
+          const u = waterPos.getX(i);
+          const v = waterPos.getY(i);
+          const z = Math.sin(u * 0.4 + time * 2.0) * Math.cos(v * 0.4 + time * 1.8) * 0.18;
+          waterPos.setZ(i, z);
+        }
+        waterSurface.geometry.attributes.position.needsUpdate = true;
+
+        // 3) 수초 흔들림 애니메이션
+        // 헤어글라스 잔디 인스턴스 흔들림
+        for (let i = 0; i < grassCount; i++) {
+          const g = grassData[i];
+          const sway = Math.sin(time * g.speed * plantWaveSpeed + g.phase) * 0.18;
+          dummy.position.copy(g.basePos);
+          dummy.rotation.set(g.baseRot.x + sway * 0.5, g.baseRot.y, g.baseRot.z + sway);
+          dummy.scale.copy(g.scale);
+          dummy.updateMatrix();
+          grassInstanced.setMatrixAt(i, dummy.matrix);
+        }
+        grassInstanced.instanceMatrix.needsUpdate = true;
+
+        // 붉은 로탈라 줄기 물살 흔들림
+        rotalaStems.forEach(stem => {
+          const sway = Math.sin(time * 1.8 * plantWaveSpeed + stem.phase) * 0.08;
+          stem.group.rotation.z = stem.baseRotZ + sway;
+          stem.group.rotation.x = sway * 0.5;
+        });
+
+        // 펄그라스 덤불 살랑임
+        pearlMeshes.forEach(p => {
+          p.mesh.position.y = p.baseY + Math.sin(time * 2.0 * plantWaveSpeed + p.phase) * 0.08;
+        });
+
+        // 4) 기포 파티클 상승 애니메이션
+        for (let i = 0; i < bubbleCount; i++) {
+          const b = bubbleData[i];
+          b.y += b.speed * delta;
+          b.phase += b.wobbleSpeed * delta;
+          const curX = b.x + Math.sin(b.phase) * b.wobbleAmp;
+          const curZ = b.z + Math.cos(b.phase) * b.wobbleAmp;
+
+          // 수면에 도달하면 재스폰
+          if (b.y >= tankHeight - 0.4) {
+            resetBubble(b);
+          }
+
+          bubbleDummy.position.set(curX, b.y, curZ);
+          bubbleDummy.scale.set(b.scale, b.scale, b.scale);
+          bubbleDummy.updateMatrix();
+          bubbleInstanced.setMatrixAt(i, bubbleDummy.matrix);
+        }
+        bubbleInstanced.instanceMatrix.needsUpdate = true;
+
+        // 5) 물고기 생태계 업데이트
+        for (let fish of fishList) {
+          fish.update(delta, time, fishSwimSpeed);
+        }
+
+        // 6) 러버덕 물살 미세 반동
+        duckGroup.position.y = 5.7 + Math.sin(time * 2.2) * 0.04;
+        duckGroup.rotation.z = Math.sin(time * 1.8) * 0.03;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // 테스트 훅 (Headless 검증 및 상태 리포트용)
+    window.advanceTime = (ms) => {
+      const steps = Math.max(1, Math.round(ms / (1000 / 60)));
+      for (let i = 0; i < steps; i++) {
+        const delta = 1 / 60;
+        const time = clock.getElapsedTime() + delta * i;
+        if (!isPaused) {
+          causticsSystem.update(time);
+          for (let fish of fishList) fish.update(delta, time, fishSwimSpeed);
+        }
+      }
+      renderer.render(scene, camera);
+    };
+
+    window.render_game_to_text = () => JSON.stringify({
+      coordinateSystem: 'world coordinates: origin=center of tank; +x right, +y up, +z toward viewer',
+      mode: isPaused ? 'paused' : 'playing',
+      lightingPreset: currentPreset,
+      lightingBrightness: Math.round(lightBrightness * 100) + '%',
+      fullscreen: Boolean(document.fullscreenElement),
+      camera: {
+        x: Number(camera.position.x.toFixed(1)),
+        y: Number(camera.position.y.toFixed(1)),
+        z: Number(camera.position.z.toFixed(1))
+      },
+      fish: {
+        total: fishList.length,
+        species: {
+          'Betta splendens': 1,
+          'Neon Tetra': 18,
+          'Corydoras': 4
+        }
+      },
+      scene: {
+        hairgrassInstances: 1200,
+        bubbles: bubbleCount,
+        driftwoodRoots: 6,
+        rubberDuck: true
+      },
+      controls: ['click object: quote', 'drag: orbit', 'wheel: zoom', 'Space: pause', 'R: reset', 'Q: quote', 'F: fullscreen']
+    });
+
+    animate();
+  </script>
+</body>
+</html>
