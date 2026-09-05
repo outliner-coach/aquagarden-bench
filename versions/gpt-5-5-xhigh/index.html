@@ -1,0 +1,2075 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D Digital Aquascape</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #13322f;
+        --muted: #48615d;
+        --panel: rgba(243, 250, 246, 0.88);
+        --line: rgba(38, 70, 64, 0.22);
+        --aqua: #3ea6a1;
+        --coral: #e65f42;
+        --sand: #dbc47f;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        background: #cde6df;
+        color: var(--ink);
+      }
+
+      #app,
+      #scene {
+        position: fixed;
+        inset: 0;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        cursor: grab;
+      }
+
+      canvas.is-hovering {
+        cursor: pointer;
+      }
+
+      canvas:active {
+        cursor: grabbing;
+      }
+
+      .hud {
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        right: 16px;
+        z-index: 4;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        pointer-events: none;
+      }
+
+      .brand,
+      .control,
+      .view-control {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        box-shadow: 0 16px 44px rgba(18, 51, 49, 0.14);
+        backdrop-filter: blur(18px);
+      }
+
+      .brand {
+        min-width: 0;
+        max-width: min(460px, calc(100vw - 32px));
+        padding: 12px 14px;
+        border-radius: 8px;
+      }
+
+      .brand b {
+        display: block;
+        font-size: clamp(15px, 1.8vw, 19px);
+        line-height: 1.15;
+        letter-spacing: 0;
+      }
+
+      .brand span {
+        display: block;
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .controls-stack {
+        display: grid;
+        gap: 8px;
+        justify-items: end;
+        pointer-events: auto;
+      }
+
+      .control {
+        display: grid;
+        grid-template-columns: auto minmax(112px, 180px) 44px;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        border-radius: 8px;
+        white-space: nowrap;
+      }
+
+      .control label,
+      .control output {
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--aqua);
+      }
+
+      .view-control {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(58px, 1fr));
+        gap: 4px;
+        width: 100%;
+        max-width: 297px;
+        padding: 5px;
+        border-radius: 8px;
+      }
+
+      .view-control button {
+        min-height: 32px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .view-control button:hover {
+        background: rgba(62, 166, 161, 0.12);
+        color: var(--ink);
+      }
+
+      .view-control button.is-active {
+        background: rgba(62, 166, 161, 0.18);
+        color: var(--ink);
+        box-shadow: inset 0 0 0 1px rgba(62, 166, 161, 0.22);
+      }
+
+      .quote-panel {
+        position: fixed;
+        left: 16px;
+        bottom: 16px;
+        z-index: 5;
+        width: min(420px, calc(100vw - 32px));
+        border: 1px solid var(--line);
+        border-left: 5px solid var(--aqua);
+        border-radius: 8px;
+        background: rgba(248, 252, 247, 0.93);
+        box-shadow: 0 18px 46px rgba(20, 46, 43, 0.18);
+        backdrop-filter: blur(16px);
+        padding: 18px 18px 16px;
+      }
+
+      .quote-panel[hidden] {
+        display: none;
+      }
+
+      .quote-panel button {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 30px;
+        height: 30px;
+        border: 1px solid rgba(39, 75, 69, 0.22);
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--ink);
+        font-size: 18px;
+        line-height: 1;
+        cursor: pointer;
+      }
+
+      .quote-panel h2 {
+        margin: 0 36px 8px 0;
+        font-size: 17px;
+        line-height: 1.25;
+        letter-spacing: 0;
+      }
+
+      .quote-panel p {
+        margin: 0;
+        line-height: 1.55;
+      }
+
+      .quote-panel .quote {
+        font-size: 15px;
+        color: #233d39;
+      }
+
+      .quote-panel .meta {
+        margin-top: 10px;
+        color: #697872;
+        font-size: 12px;
+      }
+
+      .species-strip {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 3;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px;
+        max-width: min(520px, calc(100vw - 32px));
+        pointer-events: none;
+      }
+
+      .species-strip span {
+        border: 1px solid rgba(32, 72, 69, 0.16);
+        border-radius: 999px;
+        background: rgba(249, 252, 247, 0.74);
+        box-shadow: 0 10px 30px rgba(20, 46, 43, 0.1);
+        color: #22433f;
+        padding: 7px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        backdrop-filter: blur(14px);
+      }
+
+      .vignette {
+        position: fixed;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+        background:
+          radial-gradient(circle at 50% 16%, rgba(255, 255, 255, 0.48), transparent 26%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 24%),
+          radial-gradient(circle at center, transparent 56%, rgba(18, 57, 55, 0.16) 100%);
+        mix-blend-mode: soft-light;
+      }
+
+      @media (max-width: 720px) {
+        .hud {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .brand,
+        .control,
+        .controls-stack {
+          width: 100%;
+        }
+
+        .control {
+          grid-template-columns: auto 1fr 44px;
+        }
+
+        .view-control {
+          max-width: none;
+        }
+
+        .species-strip {
+          left: 16px;
+          right: 16px;
+          justify-content: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main id="app">
+      <div id="scene" aria-label="3D 디지털 아쿠아스케이프"></div>
+
+      <div class="hud">
+        <div class="brand">
+          <b>3D Digital Aquascape</b>
+          <span>수초 언덕, 유목, 바위, 군영 관상어가 어우러진 브라우저 수조</span>
+        </div>
+        <div class="controls-stack">
+          <div class="control">
+            <label for="brightness">조명</label>
+            <input id="brightness" type="range" min="28" max="130" value="86" />
+            <output id="brightnessValue" for="brightness">86%</output>
+          </div>
+          <div class="view-control" role="group" aria-label="시점">
+            <button type="button" class="is-active" data-view="wide">전체</button>
+            <button type="button" data-view="canyon">협곡</button>
+            <button type="button" data-view="school">군영</button>
+          </div>
+        </div>
+      </div>
+
+      <aside id="quotePanel" class="quote-panel" hidden>
+        <button id="closeQuote" type="button" aria-label="명언 닫기">×</button>
+        <h2 id="quoteTitle"></h2>
+        <p id="quoteText" class="quote"></p>
+        <p id="quoteMeta" class="meta"></p>
+      </aside>
+
+      <div class="species-strip" aria-label="관상어 종류">
+        <span>네온테트라</span>
+        <span>러미노즈테트라</span>
+        <span>하프문구피</span>
+        <span>엔젤피시</span>
+        <span>체리바브</span>
+      </div>
+      <div class="vignette"></div>
+    </main>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module">
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+      const container = document.querySelector("#scene");
+      const brightnessInput = document.querySelector("#brightness");
+      const brightnessValue = document.querySelector("#brightnessValue");
+      const quotePanel = document.querySelector("#quotePanel");
+      const quoteTitle = document.querySelector("#quoteTitle");
+      const quoteText = document.querySelector("#quoteText");
+      const quoteMeta = document.querySelector("#quoteMeta");
+      const closeQuote = document.querySelector("#closeQuote");
+      const viewButtons = Array.from(document.querySelectorAll("[data-view]"));
+
+      const TANK = {
+        width: 28,
+        depth: 13,
+        bottom: -4.8,
+        surface: 6.75,
+        back: -6.5,
+        front: 6.5
+      };
+
+      const quotes = {
+        rock: {
+          title: "석경석",
+          text: "흔들리지 않는 것은 고집이 아니라 깊이를 가진 균형이다.",
+          meta: "바위는 수초와 물길의 무게 중심을 잡습니다.",
+          accent: "#a6763d"
+        },
+        wood: {
+          title: "유목",
+          text: "굽은 선은 먼 시간을 지나온 물의 기억을 가장 자연스럽게 보여준다.",
+          meta: "유목은 물고기에게 그늘과 통로를 만듭니다.",
+          accent: "#7a5030"
+        },
+        stem: {
+          title: "후경 수초",
+          text: "높이 자라는 잎은 빛을 탐내지 않고 물속 풍경에 깊이를 더한다.",
+          meta: "후경 수초는 수조의 배경 숲을 이룹니다.",
+          accent: "#4c8a3b"
+        },
+        carpet: {
+          title: "전경 수초",
+          text: "작은 잎들이 모이면 바닥도 숲이 되고, 느린 성장이 풍경을 완성한다.",
+          meta: "전경 수초는 모래길과 바위 사이를 부드럽게 잇습니다.",
+          accent: "#67a943"
+        },
+        grass: {
+          title: "헤어그라스",
+          text: "가느다란 움직임도 함께 흔들리면 물의 방향을 읽게 한다.",
+          meta: "가는 잎은 유속과 생동감을 표현합니다.",
+          accent: "#76ad54"
+        },
+        moss: {
+          title: "활착 이끼",
+          text: "가장 낮은 곳에 붙어 있는 생명도 풍경의 시간을 가장 오래 붙잡는다.",
+          meta: "이끼는 바위와 유목의 경계를 부드럽게 덮습니다.",
+          accent: "#5c9c4a"
+        },
+        floaters: {
+          title: "부유 수초",
+          text: "떠 있는 잎은 물의 표정을 가리고 드러내며 빛을 천천히 걸러낸다.",
+          meta: "수면 식물은 그림자와 안정감을 더합니다.",
+          accent: "#6ba85a"
+        },
+        water: {
+          title: "수면",
+          text: "빛은 물을 통과할 때 가장 부드러운 언어가 된다.",
+          meta: "수면의 잔물결과 카우스틱 조명이 장면을 움직입니다.",
+          accent: "#3ea6a1"
+        },
+        neon: {
+          title: "네온테트라",
+          text: "작은 몸의 선명한 빛은 무리를 만날 때 더 멀리 흐른다.",
+          meta: "중층에서 빠르게 군영하는 소형 카라신입니다.",
+          accent: "#2a8ce8"
+        },
+        rummy: {
+          title: "러미노즈테트라",
+          text: "같은 방향으로 헤엄치는 무리는 조용한 결심처럼 보인다.",
+          meta: "붉은 머리와 줄무늬 꼬리가 군영의 리듬을 만듭니다.",
+          accent: "#df3d30"
+        },
+        guppy: {
+          title: "하프문구피",
+          text: "가벼운 꼬리는 장식이 아니라 물살을 읽는 작은 돛이다.",
+          meta: "화려한 꼬리와 느긋한 유영이 전경을 채웁니다.",
+          accent: "#b854e6"
+        },
+        angel: {
+          title: "엔젤피시",
+          text: "천천히 지나가는 존재는 공간의 크기를 다시 느끼게 한다.",
+          meta: "높은 체형과 긴 지느러미가 수직감을 더합니다.",
+          accent: "#e8c764"
+        },
+        barb: {
+          title: "체리바브",
+          text: "짧은 번뜩임도 반복되면 풍경 안에 따뜻한 박자를 만든다.",
+          meta: "붉은 몸빛이 수초 사이를 산뜻하게 통과합니다.",
+          accent: "#d84b3d"
+        }
+      };
+
+      let seed = 519771;
+      const rand = () => {
+        seed = (seed * 1664525 + 1013904223) >>> 0;
+        return seed / 4294967296;
+      };
+      const randRange = (min, max) => min + (max - min) * rand();
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const smoothstep = (edge0, edge1, x) => {
+        const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+        return t * t * (3 - 2 * t);
+      };
+      const fract = (value) => value - Math.floor(value);
+      const hashNoise = (x, y, z = 0) =>
+        fract(Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453);
+
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: false,
+        powerPreference: "high-performance"
+      });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.03;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xd7eee8);
+      scene.fog = new THREE.FogExp2(0x93cfc9, 0.028);
+
+      const camera = new THREE.PerspectiveCamera(
+        44,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        120
+      );
+      camera.position.set(0, 3.2, 20);
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.06;
+      controls.target.set(0, 0.45, 0);
+      controls.minDistance = 11;
+      controls.maxDistance = 30;
+      controls.maxPolarAngle = Math.PI * 0.49;
+      controls.minPolarAngle = Math.PI * 0.23;
+      controls.enablePan = false;
+      controls.update();
+
+      const cameraViews = {
+        wide: {
+          position: new THREE.Vector3(0, 3.2, 20),
+          target: new THREE.Vector3(0, 0.45, 0)
+        },
+        canyon: {
+          position: new THREE.Vector3(0.2, 0.1, 12.6),
+          target: new THREE.Vector3(0.1, -1.45, -1.8)
+        },
+        school: {
+          position: new THREE.Vector3(-3.2, 3.4, 14.2),
+          target: new THREE.Vector3(1.6, 2.0, -1.1)
+        }
+      };
+      let cameraTransition = null;
+
+      function setActiveView(key) {
+        viewButtons.forEach((button) => {
+          button.classList.toggle("is-active", button.dataset.view === key);
+        });
+      }
+
+      function moveToView(key) {
+        const view = cameraViews[key];
+        if (!view) return;
+        setActiveView(key);
+        cameraTransition = {
+          position: view.position.clone(),
+          target: view.target.clone()
+        };
+      }
+
+      viewButtons.forEach((button) => {
+        button.addEventListener("click", () => moveToView(button.dataset.view));
+      });
+
+      controls.addEventListener("start", () => {
+        cameraTransition = null;
+      });
+
+      const root = new THREE.Group();
+      scene.add(root);
+
+      const ambientLight = new THREE.HemisphereLight(0xd7fffb, 0x687b4e, 1.25);
+      scene.add(ambientLight);
+
+      const keyLight = new THREE.DirectionalLight(0xfff5d3, 2.9);
+      keyLight.position.set(-5, 12, 8);
+      keyLight.castShadow = true;
+      keyLight.shadow.mapSize.set(2048, 2048);
+      keyLight.shadow.camera.left = -18;
+      keyLight.shadow.camera.right = 18;
+      keyLight.shadow.camera.top = 14;
+      keyLight.shadow.camera.bottom = -10;
+      keyLight.shadow.camera.near = 1;
+      keyLight.shadow.camera.far = 34;
+      scene.add(keyLight);
+
+      const rimLight = new THREE.DirectionalLight(0x7bcde8, 1.4);
+      rimLight.position.set(8, 5, -8);
+      scene.add(rimLight);
+
+      const fillLight = new THREE.PointLight(0xffc98d, 1.4, 35, 2);
+      fillLight.position.set(7, 1.2, 5);
+      scene.add(fillLight);
+
+      const materials = {
+        sand: new THREE.MeshStandardMaterial({
+          color: 0xd9c576,
+          roughness: 0.94,
+          metalness: 0.02
+        }),
+        path: new THREE.MeshStandardMaterial({
+          color: 0xe6d59b,
+          roughness: 0.9,
+          metalness: 0.01
+        }),
+        rock: new THREE.MeshStandardMaterial({
+          vertexColors: true,
+          roughness: 0.96,
+          metalness: 0.02,
+          flatShading: true
+        }),
+        darkRock: new THREE.MeshStandardMaterial({
+          color: 0x504539,
+          roughness: 0.98,
+          metalness: 0.02,
+          flatShading: true
+        }),
+        wood: new THREE.MeshStandardMaterial({
+          color: 0x6e4425,
+          roughness: 0.88,
+          metalness: 0.01
+        }),
+        leaf: new THREE.MeshStandardMaterial({
+          color: 0x4d9a3f,
+          roughness: 0.8,
+          metalness: 0,
+          side: THREE.DoubleSide
+        })
+      };
+
+      const pickPriority = {
+        neon: 80,
+        rummy: 80,
+        guppy: 80,
+        angel: 80,
+        barb: 80,
+        rock: 65,
+        wood: 60,
+        stem: 36,
+        carpet: 34,
+        grass: 32,
+        moss: 68,
+        floaters: 30,
+        water: 8
+      };
+
+      function markClickable(object, quoteKey) {
+        object.userData.quote = quotes[quoteKey];
+        object.userData.quoteKey = quoteKey;
+        object.userData.pickPriority = pickPriority[quoteKey] ?? 10;
+        return object;
+      }
+
+      function setShadow(object) {
+        object.traverse((child) => {
+          if (child.isMesh && !child.userData?.pickProxy) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+      }
+
+      function pathCenterX(z) {
+        const t = (z - TANK.back) / TANK.depth;
+        return (
+          Math.sin(t * Math.PI * 1.12 - 0.2) * 0.8 +
+          Math.sin(t * Math.PI * 3.0 + 0.7) * 0.25
+        );
+      }
+
+      function pathWidth(z) {
+        const t = (z - TANK.back) / TANK.depth;
+        return 0.9 + 0.52 * (1 - Math.abs(t - 0.52) * 1.35) + 0.18 * Math.sin(t * 8.0);
+      }
+
+      function terrainHeight(x, z) {
+        const side = Math.pow(Math.abs(x) / (TANK.width / 2), 1.75);
+        const back = smoothstep(0.5, 6.5, -z);
+        const frontDip = smoothstep(3.6, 6.5, z) * 0.25;
+        const center = pathCenterX(z);
+        const path = 1 - smoothstep(pathWidth(z) * 0.45, pathWidth(z) * 1.55, Math.abs(x - center));
+        const mound = 1.45 * side + 1.1 * back * (0.38 + side * 0.95);
+        const smallNoise =
+          Math.sin(x * 1.45 + z * 2.05) * 0.055 +
+          Math.sin(x * 3.4 - z * 1.2) * 0.035;
+        return TANK.bottom + mound - path * (0.72 + back * 0.3) - frontDip + smallNoise;
+      }
+
+      function createTerrain() {
+        const geometry = new THREE.PlaneGeometry(TANK.width, TANK.depth, 150, 80);
+        geometry.rotateX(-Math.PI / 2);
+        const positions = geometry.attributes.position;
+        const colors = [];
+        const sand = new THREE.Color(0xd8c37d);
+        const moss = new THREE.Color(0x587b37);
+        const soil = new THREE.Color(0x55422a);
+
+        for (let i = 0; i < positions.count; i += 1) {
+          const x = positions.getX(i);
+          const z = positions.getZ(i);
+          const y = terrainHeight(x, z);
+          positions.setY(i, y);
+
+          const path = 1 - smoothstep(pathWidth(z) * 0.5, pathWidth(z) * 1.6, Math.abs(x - pathCenterX(z)));
+          const mossy = smoothstep(0.15, 0.95, Math.abs(x) / (TANK.width / 2)) * 0.72;
+          const back = smoothstep(1.0, 6.4, -z) * 0.42;
+          const color = soil.clone().lerp(moss, mossy + back).lerp(sand, path * 0.9);
+          color.offsetHSL(0, 0, randRange(-0.035, 0.035));
+          colors.push(color.r, color.g, color.b);
+        }
+
+        geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+        geometry.computeVertexNormals();
+        const material = new THREE.MeshStandardMaterial({
+          vertexColors: true,
+          roughness: 0.95,
+          metalness: 0.01
+        });
+        const terrain = new THREE.Mesh(geometry, material);
+        terrain.receiveShadow = true;
+        root.add(terrain);
+      }
+
+      function createPathRibbon() {
+        const vertices = [];
+        const colors = [];
+        const indices = [];
+        const colorA = new THREE.Color(0xe9dca7);
+        const colorB = new THREE.Color(0xcdb667);
+        const steps = 92;
+
+        for (let i = 0; i <= steps; i += 1) {
+          const t = i / steps;
+          const z = TANK.back + 0.45 + t * (TANK.depth - 1.25);
+          const center = pathCenterX(z);
+          const width = pathWidth(z) * (0.92 + 0.12 * Math.sin(t * Math.PI * 5));
+          const leftX = center - width;
+          const rightX = center + width;
+          const yL = terrainHeight(leftX, z) + 0.035;
+          const yR = terrainHeight(rightX, z) + 0.035;
+          vertices.push(leftX, yL, z, rightX, yR, z);
+
+          const shade = colorA.clone().lerp(colorB, 0.25 + 0.55 * hashNoise(t, z));
+          colors.push(shade.r, shade.g, shade.b, shade.r, shade.g, shade.b);
+
+          if (i < steps) {
+            const a = i * 2;
+            indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+          }
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+        geometry.setIndex(indices);
+        geometry.computeVertexNormals();
+        const material = new THREE.MeshStandardMaterial({
+          vertexColors: true,
+          roughness: 0.88,
+          metalness: 0.01
+        });
+        const path = new THREE.Mesh(geometry, material);
+        path.receiveShadow = true;
+        root.add(path);
+      }
+
+      function createAquariumGlass() {
+        const height = TANK.surface - TANK.bottom;
+        const centerY = TANK.bottom + height / 2;
+        const glassGeometry = new THREE.BoxGeometry(TANK.width, height, TANK.depth);
+        const edges = new THREE.LineSegments(
+          new THREE.EdgesGeometry(glassGeometry),
+          new THREE.LineBasicMaterial({ color: 0xb8eee8, transparent: true, opacity: 0.45 })
+        );
+        edges.position.y = centerY;
+        edges.userData.ignoreRay = true;
+        root.add(edges);
+
+        const glassMaterial = new THREE.MeshPhysicalMaterial({
+          color: 0xcff5f1,
+          transparent: true,
+          opacity: 0.08,
+          roughness: 0.1,
+          metalness: 0,
+          transmission: 0.25,
+          side: THREE.BackSide,
+          depthWrite: false
+        });
+        const glass = new THREE.Mesh(glassGeometry, glassMaterial);
+        glass.position.y = centerY;
+        glass.userData.ignoreRay = true;
+        root.add(glass);
+      }
+
+      const waterGeometry = new THREE.PlaneGeometry(TANK.width, TANK.depth, 80, 38);
+      waterGeometry.rotateX(-Math.PI / 2);
+      const baseWater = Float32Array.from(waterGeometry.attributes.position.array);
+      const waterMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x87d3da,
+        transparent: true,
+        opacity: 0.34,
+        roughness: 0.18,
+        metalness: 0,
+        transmission: 0.18,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      });
+      const water = markClickable(new THREE.Mesh(waterGeometry, waterMaterial), "water");
+      water.position.y = TANK.surface;
+      root.add(water);
+
+      const causticMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uBrightness: { value: 0.86 }
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          varying vec2 vUv;
+          uniform float uTime;
+          uniform float uBrightness;
+
+          void main() {
+            vec2 uv = vUv;
+            float waveA = sin((uv.x * 18.0 + uv.y * 6.0) + uTime * 1.35);
+            float waveB = sin((uv.x * -7.0 + uv.y * 21.0) + uTime * 0.95);
+            float waveC = sin((uv.x * 31.0 - uv.y * 14.0) + uTime * 1.65);
+            float caustic = smoothstep(2.18, 2.88, waveA + waveB + waveC);
+            float falloff = smoothstep(0.02, 0.4, uv.y) * (1.0 - smoothstep(0.72, 1.0, uv.y));
+            vec3 color = vec3(0.70, 0.98, 1.0) * caustic * falloff * uBrightness;
+            gl_FragColor = vec4(color, caustic * falloff * 0.24 * uBrightness);
+          }
+        `,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+
+      function createLightPlanes() {
+        const backPlane = new THREE.Mesh(new THREE.PlaneGeometry(TANK.width, TANK.surface - TANK.bottom), causticMaterial);
+        backPlane.position.set(0, 0.95, TANK.back + 0.06);
+        backPlane.userData.ignoreRay = true;
+        root.add(backPlane);
+
+        const shaftMaterial = new THREE.MeshBasicMaterial({
+          color: 0xeafff8,
+          transparent: true,
+          opacity: 0.12,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          side: THREE.DoubleSide
+        });
+        for (let i = 0; i < 7; i += 1) {
+          const geometry = new THREE.PlaneGeometry(randRange(1.0, 1.8), randRange(8.5, 12.0));
+          const shaft = new THREE.Mesh(geometry, shaftMaterial.clone());
+          shaft.position.set(randRange(-11, 11), randRange(0.7, 2.2), randRange(-5.7, 1.5));
+          shaft.rotation.set(randRange(-0.1, 0.1), randRange(-0.26, 0.26), randRange(-0.18, 0.18));
+          shaft.material.opacity = randRange(0.055, 0.12);
+          shaft.userData.ignoreRay = true;
+          root.add(shaft);
+        }
+      }
+
+      function rockGeometry(radius = 1, detail = 2) {
+        const geometry = new THREE.IcosahedronGeometry(radius, detail);
+        const positions = geometry.attributes.position;
+        const colors = [];
+        const gray = new THREE.Color(0x6a6152);
+        const ochre = new THREE.Color(0xa17f4d);
+        const dark = new THREE.Color(0x40372e);
+
+        for (let i = 0; i < positions.count; i += 1) {
+          const v = new THREE.Vector3(positions.getX(i), positions.getY(i), positions.getZ(i));
+          const n = v.clone().normalize();
+          const ridge =
+            0.18 * Math.sin(n.x * 7.8 + n.y * 4.1) +
+            0.12 * Math.sin(n.z * 9.3 + n.x * 2.7) +
+            (hashNoise(n.x * 8.0, n.y * 8.0, n.z * 8.0) - 0.5) * 0.28;
+          v.multiplyScalar(1 + ridge);
+          positions.setXYZ(i, v.x, v.y, v.z);
+
+          const c = gray
+            .clone()
+            .lerp(ochre, clamp(n.y * 0.38 + 0.34 + hashNoise(n.x, n.z) * 0.2, 0, 1))
+            .lerp(dark, clamp(-n.y * 0.25 + hashNoise(n.z, n.y) * 0.12, 0, 0.45));
+          colors.push(c.r, c.g, c.b);
+        }
+
+        geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+        geometry.computeVertexNormals();
+        return geometry;
+      }
+
+      function createRock(name, x, z, scale, rotation = [0, 0, 0]) {
+        const mesh = new THREE.Mesh(rockGeometry(1, 2), materials.rock.clone());
+        mesh.position.set(x, terrainHeight(x, z) + scale.y * 0.46, z);
+        mesh.scale.set(scale.x, scale.y, scale.z);
+        mesh.rotation.set(rotation[0], rotation[1], rotation[2]);
+        mesh.name = name;
+        setShadow(mesh);
+        return mesh;
+      }
+
+      function buildRocks() {
+        const left = markClickable(new THREE.Group(), "rock");
+        left.name = "left-rock-composition";
+        left.add(createRock("left-main-rock", -7.0, -1.1, { x: 2.7, y: 2.5, z: 1.55 }, [0.22, -0.45, -0.12]));
+        left.add(createRock("left-cap-rock", -8.3, -3.0, { x: 2.0, y: 1.25, z: 1.0 }, [0.55, 0.35, 0.18]));
+        left.add(createRock("left-front-rock", -5.2, 1.9, { x: 1.35, y: 1.05, z: 1.2 }, [0.15, 0.45, 0.4]));
+        left.add(createRock("left-small-stone", -3.5, -0.1, { x: 0.85, y: 0.7, z: 0.7 }, [0.15, 1.2, 0.1]));
+        root.add(left);
+
+        const right = markClickable(new THREE.Group(), "rock");
+        right.name = "right-rock-composition";
+        right.add(createRock("right-main-rock", 6.8, -1.8, { x: 2.75, y: 2.35, z: 1.8 }, [0.05, 0.45, 0.08]));
+        right.add(createRock("right-back-rock", 9.5, -3.2, { x: 2.05, y: 1.5, z: 1.2 }, [0.25, -0.7, 0.22]));
+        right.add(createRock("right-front-rock", 7.2, 2.5, { x: 1.9, y: 1.15, z: 1.35 }, [0.1, 1.0, -0.12]));
+        right.add(createRock("right-valley-stone", 3.0, -0.4, { x: 1.05, y: 0.8, z: 0.7 }, [0.28, -0.4, 0.3]));
+        right.add(createRock("right-small-stone", 10.8, 1.0, { x: 0.9, y: 0.65, z: 0.75 }, [-0.1, 0.2, 0.05]));
+        root.add(right);
+
+        const pathStones = markClickable(new THREE.Group(), "rock");
+        for (let i = 0; i < 34; i += 1) {
+          const z = randRange(-5.6, 5.7);
+          const center = pathCenterX(z);
+          const side = rand() < 0.5 ? -1 : 1;
+          const x = center + side * randRange(pathWidth(z) * 0.85, pathWidth(z) * 1.75);
+          const s = randRange(0.08, 0.28);
+          const pebble = new THREE.Mesh(rockGeometry(1, 1), materials.darkRock.clone());
+          pebble.position.set(x, terrainHeight(x, z) + s * 0.4, z);
+          pebble.scale.set(s * randRange(1.0, 1.7), s * randRange(0.55, 1.1), s * randRange(0.8, 1.35));
+          pebble.rotation.set(randRange(0, Math.PI), randRange(0, Math.PI), randRange(0, Math.PI));
+          pebble.castShadow = true;
+          pebble.receiveShadow = true;
+          pathStones.add(pebble);
+        }
+        root.add(pathStones);
+      }
+
+      function tubeFromPoints(points, radius, material, tubularSegments = 36) {
+        const curve = new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(p[0], p[1], p[2])));
+        const geometry = new THREE.TubeGeometry(curve, tubularSegments, radius, 9, false);
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        return mesh;
+      }
+
+      function buildDriftwood() {
+        const wood = markClickable(new THREE.Group(), "wood");
+        wood.name = "driftwood-roots";
+        const m = materials.wood;
+        wood.add(
+          tubeFromPoints(
+            [
+              [-8.5, terrainHeight(-8.5, 1.1) + 0.15, 1.1],
+              [-6.7, -2.5, 0.4],
+              [-4.6, -1.6, -0.7],
+              [-2.6, -1.0, -2.0],
+              [-0.7, -0.65, -3.8]
+            ],
+            0.12,
+            m,
+            44
+          )
+        );
+        wood.add(
+          tubeFromPoints(
+            [
+              [8.9, terrainHeight(8.9, 1.6) + 0.2, 1.6],
+              [7.7, -2.35, 0.4],
+              [6.2, -1.4, -1.2],
+              [4.1, -1.05, -2.5],
+              [1.3, -0.82, -3.6]
+            ],
+            0.11,
+            m,
+            44
+          )
+        );
+        wood.add(
+          tubeFromPoints(
+            [
+              [5.5, -2.1, 2.8],
+              [4.8, -1.2, 1.2],
+              [3.7, -0.25, -0.8],
+              [3.0, 0.05, -2.2]
+            ],
+            0.075,
+            m,
+            32
+          )
+        );
+        wood.add(
+          tubeFromPoints(
+            [
+              [-5.4, -2.25, 2.4],
+              [-4.6, -1.25, 1.25],
+              [-3.9, -0.55, 0.1],
+              [-3.2, -0.2, -1.3]
+            ],
+            0.07,
+            m,
+            32
+          )
+        );
+        wood.add(
+          tubeFromPoints(
+            [
+              [6.7, -1.4, -1.6],
+              [7.8, -0.65, -2.65],
+              [9.1, -0.2, -3.75]
+            ],
+            0.055,
+            m,
+            24
+          )
+        );
+        wood.add(
+          tubeFromPoints(
+            [
+              [-6.2, -1.5, -0.3],
+              [-7.4, -0.75, -1.55],
+              [-9.1, -0.42, -2.75]
+            ],
+            0.055,
+            m,
+            24
+          )
+        );
+        root.add(wood);
+      }
+
+      function createLeafGeometry() {
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        shape.bezierCurveTo(0.14, 0.12, 0.16, 0.33, 0.02, 0.52);
+        shape.bezierCurveTo(-0.16, 0.33, -0.14, 0.12, 0, 0);
+        const geometry = new THREE.ShapeGeometry(shape, 10);
+        geometry.computeVertexNormals();
+        return geometry;
+      }
+
+      const leafGeometry = createLeafGeometry();
+      const roundLeafGeometry = new THREE.CircleGeometry(0.5, 10);
+      const stemGeometry = new THREE.CylinderGeometry(0.025, 0.035, 1, 5);
+      const bladeMaterial = new THREE.LineBasicMaterial({
+        color: 0x78b658,
+        transparent: true,
+        opacity: 0.78
+      });
+
+      function randomPlantSpot(preferBack = false) {
+        for (let i = 0; i < 200; i += 1) {
+          const x = randRange(-13.1, 13.1);
+          const z = preferBack
+            ? TANK.back + Math.pow(rand(), 0.54) * 6.0
+            : randRange(TANK.back + 0.55, TANK.front - 0.35);
+          const center = pathCenterX(z);
+          const awayFromPath = Math.abs(x - center) > pathWidth(z) * (preferBack ? 1.35 : 1.05);
+          const sideWeight = Math.abs(x) > 2.2 || z > 1.8;
+          if (awayFromPath && sideWeight) {
+            return { x, z, y: terrainHeight(x, z) };
+          }
+        }
+        const x = randRange(-12.5, 12.5);
+        const z = randRange(TANK.back + 0.6, TANK.front - 0.4);
+        return { x, z, y: terrainHeight(x, z) };
+      }
+
+      function buildCarpetPlants() {
+        const carpet = markClickable(new THREE.Group(), "carpet");
+        const count = 980;
+        const material = new THREE.MeshStandardMaterial({
+          color: 0x5fab42,
+          roughness: 0.8,
+          metalness: 0,
+          side: THREE.DoubleSide,
+          vertexColors: true
+        });
+        const mesh = new THREE.InstancedMesh(roundLeafGeometry, material, count);
+        const dummy = new THREE.Object3D();
+        const color = new THREE.Color();
+
+        for (let i = 0; i < count; i += 1) {
+          const p = randomPlantSpot(false);
+          const scale = randRange(0.12, 0.26) * (p.z > 2.0 ? 1.1 : 0.88);
+          dummy.position.set(p.x, p.y + 0.035 + randRange(0, 0.035), p.z);
+          dummy.rotation.set(-Math.PI / 2 + randRange(-0.24, 0.18), 0, randRange(0, Math.PI * 2));
+          dummy.scale.set(scale * randRange(0.65, 1.25), scale * randRange(0.5, 1.05), scale);
+          dummy.updateMatrix();
+          mesh.setMatrixAt(i, dummy.matrix);
+          color.set(rand() < 0.5 ? 0x65b248 : 0x3f8e38).offsetHSL(0, randRange(-0.05, 0.05), randRange(-0.05, 0.05));
+          mesh.setColorAt(i, color);
+        }
+
+        mesh.instanceMatrix.needsUpdate = true;
+        mesh.instanceColor.needsUpdate = true;
+        mesh.receiveShadow = true;
+        mesh.castShadow = true;
+        carpet.add(mesh);
+        root.add(carpet);
+      }
+
+      function buildStemPlants() {
+        const stems = markClickable(new THREE.Group(), "stem");
+        const stemCount = 280;
+        const stemMaterial = new THREE.MeshStandardMaterial({
+          color: 0x477932,
+          roughness: 0.86,
+          metalness: 0
+        });
+        const leafMaterial = new THREE.MeshStandardMaterial({
+          color: 0x4e9c42,
+          roughness: 0.78,
+          metalness: 0,
+          side: THREE.DoubleSide,
+          vertexColors: true
+        });
+        const stemMesh = new THREE.InstancedMesh(stemGeometry, stemMaterial, stemCount);
+        const leafMesh = new THREE.InstancedMesh(leafGeometry, leafMaterial, stemCount * 5);
+        const dummy = new THREE.Object3D();
+        const color = new THREE.Color();
+        let leafIndex = 0;
+
+        for (let i = 0; i < stemCount; i += 1) {
+          const p = randomPlantSpot(true);
+          const height = randRange(1.15, 3.35) * (p.z < -3.6 ? 1.18 : 1);
+          dummy.position.set(p.x, p.y + height / 2, p.z);
+          dummy.rotation.set(randRange(-0.08, 0.08), randRange(0, Math.PI), randRange(-0.05, 0.05));
+          dummy.scale.set(randRange(0.75, 1.35), height, randRange(0.75, 1.35));
+          dummy.updateMatrix();
+          stemMesh.setMatrixAt(i, dummy.matrix);
+
+          const leafCount = 3 + Math.floor(rand() * 3);
+          for (let j = 0; j < leafCount; j += 1) {
+            const h = p.y + height * randRange(0.18, 0.96);
+            const yaw = randRange(0, Math.PI * 2);
+            const size = randRange(0.46, 0.82) * (height / 2.2);
+            dummy.position.set(
+              p.x + Math.cos(yaw) * randRange(0.02, 0.12),
+              h,
+              p.z + Math.sin(yaw) * randRange(0.02, 0.12)
+            );
+            dummy.rotation.set(randRange(-0.3, 0.3), yaw, randRange(-0.5, 0.5));
+            dummy.scale.set(size * randRange(0.55, 1.1), size, size);
+            dummy.updateMatrix();
+            leafMesh.setMatrixAt(leafIndex, dummy.matrix);
+            color
+              .set(rand() < 0.45 ? 0x548f38 : 0x7a9a42)
+              .offsetHSL(randRange(-0.025, 0.03), randRange(-0.04, 0.05), randRange(-0.05, 0.05));
+            leafMesh.setColorAt(leafIndex, color);
+            leafIndex += 1;
+          }
+        }
+
+        stemMesh.instanceMatrix.needsUpdate = true;
+        leafMesh.instanceMatrix.needsUpdate = true;
+        leafMesh.instanceColor.needsUpdate = true;
+        stemMesh.castShadow = true;
+        stemMesh.receiveShadow = true;
+        leafMesh.castShadow = true;
+        leafMesh.receiveShadow = true;
+        stems.add(stemMesh, leafMesh);
+        root.add(stems);
+      }
+
+      function buildHairgrass() {
+        const grass = markClickable(new THREE.Group(), "grass");
+        const positions = [];
+        const bladeCount = 900;
+        for (let i = 0; i < bladeCount; i += 1) {
+          const p = randomPlantSpot(false);
+          if (p.z < -5.8 || Math.abs(p.x - pathCenterX(p.z)) < pathWidth(p.z) * 1.4) {
+            i -= 1;
+            continue;
+          }
+          const h = randRange(0.42, 1.42);
+          const bend = new THREE.Vector3(randRange(-0.08, 0.08), h, randRange(-0.08, 0.08));
+          positions.push(p.x, p.y + 0.04, p.z, p.x + bend.x, p.y + bend.y, p.z + bend.z);
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+        const blades = new THREE.LineSegments(geometry, bladeMaterial);
+        grass.add(blades);
+        grass.userData.sway = {
+          geometry,
+          basePositions: Float32Array.from(positions),
+          bladeCount
+        };
+        root.add(grass);
+        return grass;
+      }
+
+      function updateHairgrass(grass, time) {
+        const data = grass?.userData?.sway;
+        if (!data) return;
+        const positions = data.geometry.attributes.position.array;
+        const base = data.basePositions;
+        for (let i = 0; i < data.bladeCount; i += 1) {
+          const rootIndex = i * 6;
+          const tipIndex = rootIndex + 3;
+          const rootX = base[rootIndex];
+          const rootZ = base[rootIndex + 2];
+          const tipY = base[tipIndex + 1];
+          const phase = rootX * 0.55 + rootZ * 0.9;
+          const amp = 0.025 + Math.max(0, tipY - base[rootIndex + 1]) * 0.028;
+          positions[tipIndex] = base[tipIndex] + Math.sin(time * 1.35 + phase) * amp;
+          positions[tipIndex + 2] = base[tipIndex + 2] + Math.cos(time * 1.1 + phase * 0.7) * amp * 0.74;
+        }
+        data.geometry.attributes.position.needsUpdate = true;
+      }
+
+      function buildRosettePlants() {
+        const rosettes = markClickable(new THREE.Group(), "carpet");
+        const materialPalette = [0x55a544, 0x79b344, 0x3c8439, 0x8c6d35];
+        const positions = [
+          [-10.5, 3.2, 1.1],
+          [-8.9, 0.1, 0.9],
+          [-5.3, 3.8, 0.75],
+          [6.2, 3.8, 1.0],
+          [9.1, 2.1, 0.95],
+          [10.7, -0.5, 0.9],
+          [-11.4, -2.9, 0.85],
+          [11.2, -3.2, 0.95],
+          [-3.0, 4.7, 0.65],
+          [3.4, 4.6, 0.65]
+        ];
+
+        positions.forEach(([x, z, size]) => {
+          const group = new THREE.Group();
+          group.position.set(x, terrainHeight(x, z) + 0.06, z);
+          const leafCount = 10 + Math.floor(rand() * 10);
+          for (let i = 0; i < leafCount; i += 1) {
+            const leaf = new THREE.Mesh(
+              leafGeometry,
+              new THREE.MeshStandardMaterial({
+                color: materialPalette[Math.floor(rand() * materialPalette.length)],
+                roughness: 0.82,
+                side: THREE.DoubleSide
+              })
+            );
+            const angle = (i / leafCount) * Math.PI * 2 + randRange(-0.14, 0.14);
+            leaf.rotation.set(randRange(-0.35, 0.35), angle, -0.95 + randRange(-0.25, 0.12));
+            leaf.scale.set(size * randRange(0.75, 1.2), size * randRange(1.0, 1.65), size);
+            leaf.castShadow = true;
+            leaf.receiveShadow = true;
+            group.add(leaf);
+          }
+          rosettes.add(group);
+        });
+        root.add(rosettes);
+      }
+
+      function buildMossPatches() {
+        const moss = markClickable(new THREE.Group(), "moss");
+        moss.name = "moss-patches";
+        const anchors = [
+          { x: -7.2, z: -1.0, y: terrainHeight(-7.2, -1.0) + 1.95, w: 2.5, d: 1.15, count: 62 },
+          { x: -8.4, z: -3.0, y: terrainHeight(-8.4, -3.0) + 1.1, w: 1.7, d: 0.75, count: 38 },
+          { x: -5.2, z: 1.75, y: terrainHeight(-5.2, 1.75) + 0.92, w: 1.25, d: 0.95, count: 34 },
+          { x: 6.7, z: -1.8, y: terrainHeight(6.7, -1.8) + 1.9, w: 2.4, d: 1.2, count: 62 },
+          { x: 9.3, z: -3.0, y: terrainHeight(9.3, -3.0) + 1.3, w: 1.7, d: 0.8, count: 38 },
+          { x: 7.3, z: 2.4, y: terrainHeight(7.3, 2.4) + 0.92, w: 1.8, d: 1.0, count: 42 },
+          { x: 0.1, z: -3.8, y: terrainHeight(0.1, -3.8) + 0.22, w: 1.2, d: 0.5, count: 26 }
+        ];
+        const count = anchors.reduce((sum, anchor) => sum + anchor.count, 0);
+        const material = new THREE.MeshStandardMaterial({
+          color: 0x4f9a45,
+          roughness: 0.88,
+          metalness: 0,
+          side: THREE.DoubleSide,
+          vertexColors: true
+        });
+        const mesh = new THREE.InstancedMesh(roundLeafGeometry, material, count);
+        const dummy = new THREE.Object3D();
+        const color = new THREE.Color();
+        let index = 0;
+
+        anchors.forEach((anchor) => {
+          for (let i = 0; i < anchor.count; i += 1) {
+            const x = anchor.x + randRange(-anchor.w, anchor.w) * 0.5;
+            const z = anchor.z + randRange(-anchor.d, anchor.d) * 0.5;
+            const y = anchor.y + randRange(-0.22, 0.24);
+            const scale = randRange(0.07, 0.18);
+            dummy.position.set(x, y, z);
+            dummy.rotation.set(randRange(-0.95, 0.45), randRange(0, Math.PI * 2), randRange(-0.5, 0.5));
+            dummy.scale.set(scale * randRange(0.8, 1.65), scale * randRange(0.45, 0.9), scale);
+            dummy.updateMatrix();
+            mesh.setMatrixAt(index, dummy.matrix);
+            color
+              .set(rand() < 0.5 ? 0x4d8c3f : 0x6ead4d)
+              .offsetHSL(randRange(-0.02, 0.02), randRange(-0.06, 0.04), randRange(-0.04, 0.05));
+            mesh.setColorAt(index, color);
+            index += 1;
+          }
+        });
+
+        mesh.instanceMatrix.needsUpdate = true;
+        mesh.instanceColor.needsUpdate = true;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        moss.add(mesh);
+        root.add(moss);
+      }
+
+      function buildRedStemAccents() {
+        const accents = markClickable(new THREE.Group(), "stem");
+        accents.name = "red-stem-accents";
+        const stemCount = 128;
+        const leafCount = stemCount * 6;
+        const stemMaterial = new THREE.MeshStandardMaterial({
+          color: 0x5a6934,
+          roughness: 0.86,
+          metalness: 0
+        });
+        const leafMaterial = new THREE.MeshStandardMaterial({
+          color: 0x9a6f3e,
+          roughness: 0.78,
+          metalness: 0,
+          side: THREE.DoubleSide,
+          vertexColors: true
+        });
+        const stemMesh = new THREE.InstancedMesh(stemGeometry, stemMaterial, stemCount);
+        const leafMesh = new THREE.InstancedMesh(leafGeometry, leafMaterial, leafCount);
+        const dummy = new THREE.Object3D();
+        const green = new THREE.Color(0x687f39);
+        const copper = new THREE.Color(0xa4563d);
+        const color = new THREE.Color();
+        let leafIndex = 0;
+
+        for (let i = 0; i < stemCount; i += 1) {
+          const side = rand() < 0.5 ? -1 : 1;
+          const x = side * randRange(7.6, 13.1) + randRange(-0.45, 0.45);
+          const z = randRange(-6.1, -1.15);
+          const baseY = terrainHeight(x, z);
+          const height = randRange(1.65, 3.7) * (z < -4.3 ? 1.15 : 1);
+          dummy.position.set(x, baseY + height / 2, z);
+          dummy.rotation.set(randRange(-0.06, 0.08), randRange(0, Math.PI), randRange(-0.08, 0.08));
+          dummy.scale.set(randRange(0.65, 1.0), height, randRange(0.65, 1.0));
+          dummy.updateMatrix();
+          stemMesh.setMatrixAt(i, dummy.matrix);
+
+          for (let j = 0; j < 6; j += 1) {
+            const h = baseY + height * (0.2 + j * 0.135 + randRange(-0.025, 0.03));
+            const yaw = randRange(0, Math.PI * 2);
+            const size = randRange(0.36, 0.68) * (height / 2.5);
+            dummy.position.set(
+              x + Math.cos(yaw) * randRange(0.03, 0.16),
+              h,
+              z + Math.sin(yaw) * randRange(0.03, 0.16)
+            );
+            dummy.rotation.set(randRange(-0.32, 0.24), yaw, randRange(-0.55, 0.48));
+            dummy.scale.set(size * randRange(0.55, 0.95), size, size);
+            dummy.updateMatrix();
+            leafMesh.setMatrixAt(leafIndex, dummy.matrix);
+            color.copy(green).lerp(copper, j / 5).offsetHSL(0, randRange(-0.04, 0.05), randRange(-0.04, 0.05));
+            leafMesh.setColorAt(leafIndex, color);
+            leafIndex += 1;
+          }
+        }
+
+        stemMesh.instanceMatrix.needsUpdate = true;
+        leafMesh.instanceMatrix.needsUpdate = true;
+        leafMesh.instanceColor.needsUpdate = true;
+        stemMesh.castShadow = true;
+        leafMesh.castShadow = true;
+        accents.add(stemMesh, leafMesh);
+        root.add(accents);
+      }
+
+      function buildFloatingPlants() {
+        const floaters = markClickable(new THREE.Group(), "floaters");
+        floaters.name = "surface-floaters";
+        const count = 176;
+        const leafMaterial = new THREE.MeshStandardMaterial({
+          color: 0x79b65b,
+          roughness: 0.72,
+          metalness: 0,
+          side: THREE.DoubleSide,
+          vertexColors: true
+        });
+        const leaves = new THREE.InstancedMesh(roundLeafGeometry, leafMaterial, count);
+        const dummy = new THREE.Object3D();
+        const color = new THREE.Color();
+        const rootPositions = [];
+
+        for (let i = 0; i < count; i += 1) {
+          const edge = rand();
+          const x =
+            edge < 0.48
+              ? randRange(-13.1, -7.1)
+              : edge < 0.96
+                ? randRange(7.1, 13.1)
+                : randRange(-4.5, 4.5);
+          const z = edge < 0.96 ? randRange(-6.1, -3.0) : randRange(-6.2, -5.2);
+          const scale = randRange(0.08, 0.19);
+          dummy.position.set(x, TANK.surface + 0.035 + randRange(-0.015, 0.012), z);
+          dummy.rotation.set(-Math.PI / 2, 0, randRange(0, Math.PI * 2));
+          dummy.scale.set(scale * randRange(0.75, 1.45), scale * randRange(0.65, 1.05), scale);
+          dummy.updateMatrix();
+          leaves.setMatrixAt(i, dummy.matrix);
+          color
+            .set(rand() < 0.55 ? 0x79b65b : 0xa2c56c)
+            .offsetHSL(randRange(-0.025, 0.025), randRange(-0.04, 0.04), randRange(-0.05, 0.05));
+          leaves.setColorAt(i, color);
+
+          if (i % 2 === 0) {
+            const rootLength = randRange(0.25, 0.82);
+            rootPositions.push(x, TANK.surface - 0.02, z, x + randRange(-0.02, 0.02), TANK.surface - rootLength, z + randRange(-0.02, 0.02));
+          }
+        }
+
+        leaves.instanceMatrix.needsUpdate = true;
+        leaves.instanceColor.needsUpdate = true;
+        leaves.castShadow = true;
+        leaves.receiveShadow = false;
+        floaters.add(leaves);
+
+        const rootGeometry = new THREE.BufferGeometry();
+        rootGeometry.setAttribute("position", new THREE.Float32BufferAttribute(rootPositions, 3));
+        const rootLines = new THREE.LineSegments(
+          rootGeometry,
+          new THREE.LineBasicMaterial({
+            color: 0x69794d,
+            transparent: true,
+            opacity: 0.34
+          })
+        );
+        floaters.add(rootLines);
+        root.add(floaters);
+      }
+
+      const fishActors = [];
+
+      function makeTriangleGeometry(points) {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.Float32BufferAttribute(points.flat(), 3));
+        geometry.setIndex([0, 1, 2]);
+        geometry.computeVertexNormals();
+        return geometry;
+      }
+
+      function makeFinMaterial(color, opacity = 0.82) {
+        return new THREE.MeshStandardMaterial({
+          color,
+          roughness: 0.45,
+          metalness: 0.02,
+          transparent: true,
+          opacity,
+          side: THREE.DoubleSide
+        });
+      }
+
+      function makeFishModel(species) {
+        const group = markClickable(new THREE.Group(), species.quoteKey);
+        group.name = species.name;
+        const bodyMaterial = new THREE.MeshStandardMaterial({
+          color: species.body,
+          roughness: 0.48,
+          metalness: 0.05
+        });
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 18, 12), bodyMaterial);
+        body.scale.set(species.length, species.height, species.width);
+        body.castShadow = true;
+        group.add(body);
+
+        if (species.belly) {
+          const belly = new THREE.Mesh(
+            new THREE.SphereGeometry(0.502, 18, 8, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5),
+            new THREE.MeshStandardMaterial({
+              color: species.belly,
+              roughness: 0.54,
+              metalness: 0.02,
+              transparent: true,
+              opacity: 0.88
+            })
+          );
+          belly.scale.set(species.length * 0.98, species.height * 0.7, species.width * 0.98);
+          belly.rotation.x = Math.PI;
+          group.add(belly);
+        }
+
+        const tailPivot = new THREE.Group();
+        tailPivot.position.x = -species.length * 0.46;
+        const tailMaterial = makeFinMaterial(species.tail, species.tailOpacity ?? 0.84);
+        const tailGeometry = makeTriangleGeometry([
+          [0.0, 0, 0],
+          [-species.tailLength, species.tailHeight, 0],
+          [-species.tailLength, -species.tailHeight, 0]
+        ]);
+        const tail = new THREE.Mesh(tailGeometry, tailMaterial);
+        tail.castShadow = true;
+        tailPivot.add(tail);
+        group.add(tailPivot);
+
+        const dorsal = new THREE.Mesh(
+          makeTriangleGeometry([
+            [-species.length * 0.1, species.height * 0.22, 0],
+            [-species.length * 0.45, species.height * (species.dorsal || 0.95), 0],
+            [species.length * 0.18, species.height * 0.22, 0]
+          ]),
+          makeFinMaterial(species.fin || species.tail, 0.55)
+        );
+        dorsal.castShadow = true;
+        group.add(dorsal);
+
+        const ventral = new THREE.Mesh(
+          makeTriangleGeometry([
+            [-species.length * 0.04, -species.height * 0.25, 0],
+            [-species.length * 0.32, -species.height * (species.ventral || 0.8), 0],
+            [species.length * 0.24, -species.height * 0.2, 0]
+          ]),
+          makeFinMaterial(species.fin || species.tail, 0.48)
+        );
+        ventral.castShadow = true;
+        group.add(ventral);
+
+        if (species.stripe) {
+          const stripeMaterial = new THREE.MeshBasicMaterial({ color: species.stripe, side: THREE.DoubleSide });
+          [-1, 1].forEach((side) => {
+            const stripe = new THREE.Mesh(new THREE.PlaneGeometry(species.length * 0.7, 0.045), stripeMaterial);
+            stripe.position.set(0.02, species.height * 0.02, side * species.width * 0.51);
+            stripe.rotation.y = side > 0 ? 0 : Math.PI;
+            group.add(stripe);
+          });
+        }
+
+        if (species.redStripe) {
+          const redMaterial = new THREE.MeshBasicMaterial({ color: species.redStripe, side: THREE.DoubleSide });
+          [-1, 1].forEach((side) => {
+            const stripe = new THREE.Mesh(new THREE.PlaneGeometry(species.length * 0.55, 0.04), redMaterial);
+            stripe.position.set(-species.length * 0.05, -species.height * 0.16, side * species.width * 0.515);
+            stripe.rotation.y = side > 0 ? 0 : Math.PI;
+            group.add(stripe);
+          });
+        }
+
+        if (species.wedge) {
+          const wedgeMaterial = new THREE.MeshBasicMaterial({ color: species.wedge, side: THREE.DoubleSide });
+          [-1, 1].forEach((side) => {
+            const wedge = new THREE.Mesh(
+              makeTriangleGeometry([
+                [-species.length * 0.38, -species.height * 0.22, side * species.width * 0.52],
+                [species.length * 0.28, -species.height * 0.08, side * species.width * 0.52],
+                [-species.length * 0.34, species.height * 0.32, side * species.width * 0.52]
+              ]),
+              wedgeMaterial
+            );
+            group.add(wedge);
+          });
+        }
+
+        const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x11120f });
+        [-1, 1].forEach((side) => {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(species.eye || 0.035, 8, 6), eyeMaterial);
+          eye.position.set(species.length * 0.42, species.height * 0.16, side * species.width * 0.42);
+          group.add(eye);
+        });
+
+        const clickTarget = new THREE.Mesh(
+          new THREE.SphereGeometry(0.5, 12, 8),
+          new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false
+          })
+        );
+        clickTarget.name = `${species.name}-click-target`;
+        clickTarget.userData.pickProxy = true;
+        clickTarget.castShadow = false;
+        clickTarget.receiveShadow = false;
+        clickTarget.scale.set(species.length * 1.85, species.height * 2.2, Math.max(species.width * 3.4, 0.5));
+        group.add(clickTarget);
+
+        group.userData.tailPivot = tailPivot;
+        setShadow(group);
+        return group;
+      }
+
+      const speciesList = {
+        neon: {
+          name: "neon-tetra",
+          quoteKey: "neon",
+          body: 0x2d8be8,
+          belly: 0xdfeff2,
+          stripe: 0x35f4ff,
+          redStripe: 0xd83b34,
+          tail: 0xf0473a,
+          fin: 0x5ee7ff,
+          length: 0.52,
+          height: 0.18,
+          width: 0.13,
+          tailLength: 0.28,
+          tailHeight: 0.16,
+          speed: 0.64,
+          eye: 0.025
+        },
+        rummy: {
+          name: "rummy-nose-tetra",
+          quoteKey: "rummy",
+          body: 0xded9bf,
+          belly: 0xf7eee0,
+          stripe: 0xd53c2e,
+          tail: 0xffffff,
+          fin: 0xe6e9df,
+          length: 0.58,
+          height: 0.19,
+          width: 0.13,
+          tailLength: 0.26,
+          tailHeight: 0.15,
+          speed: 0.72,
+          eye: 0.026
+        },
+        guppy: {
+          name: "halfmoon-guppy",
+          quoteKey: "guppy",
+          body: 0xe2aa42,
+          belly: 0xf4e3b8,
+          tail: 0xb94bdc,
+          fin: 0x45c8e2,
+          length: 0.42,
+          height: 0.16,
+          width: 0.12,
+          tailLength: 0.38,
+          tailHeight: 0.28,
+          speed: 0.5,
+          eye: 0.022
+        },
+        angel: {
+          name: "angelfish",
+          quoteKey: "angel",
+          body: 0xe4c865,
+          belly: 0xf8ecd3,
+          stripe: 0x2c2c28,
+          tail: 0xf0d777,
+          fin: 0xf1dc85,
+          length: 0.55,
+          height: 0.48,
+          width: 0.11,
+          tailLength: 0.24,
+          tailHeight: 0.28,
+          dorsal: 1.55,
+          ventral: 1.55,
+          speed: 0.36,
+          eye: 0.027
+        },
+        barb: {
+          name: "cherry-barb",
+          quoteKey: "barb",
+          body: 0xce4235,
+          belly: 0xf2a06d,
+          wedge: 0x8d201d,
+          tail: 0xd85f48,
+          fin: 0xe46a52,
+          length: 0.5,
+          height: 0.18,
+          width: 0.12,
+          tailLength: 0.22,
+          tailHeight: 0.15,
+          speed: 0.58,
+          eye: 0.024
+        }
+      };
+
+      function addFish(speciesKey, count, options) {
+        const species = speciesList[speciesKey];
+        for (let i = 0; i < count; i += 1) {
+          const model = makeFishModel(species);
+          const scale = randRange(options.scale[0], options.scale[1]);
+          model.scale.setScalar(scale);
+          root.add(model);
+          fishActors.push({
+            group: model,
+            species,
+            tailPivot: model.userData.tailPivot,
+            phase: randRange(0, Math.PI * 2),
+            speed: species.speed * randRange(0.82, 1.18) * (options.speedScale || 1),
+            center: new THREE.Vector3(
+              randRange(options.centerX[0], options.centerX[1]),
+              randRange(options.centerY[0], options.centerY[1]),
+              randRange(options.centerZ[0], options.centerZ[1])
+            ),
+            radiusX: randRange(options.radiusX[0], options.radiusX[1]),
+            radiusZ: randRange(options.radiusZ[0], options.radiusZ[1]),
+            vertical: randRange(options.vertical[0], options.vertical[1]),
+            direction: rand() < 0.5 ? -1 : 1,
+            heading: randRange(-Math.PI, Math.PI),
+            schoolingOffset: new THREE.Vector3(randRange(-0.42, 0.42), randRange(-0.16, 0.16), randRange(-0.35, 0.35))
+          });
+        }
+      }
+
+      function buildFish() {
+        addFish("rummy", 15, {
+          scale: [0.9, 1.08],
+          centerX: [-1.4, 1.4],
+          centerY: [3.1, 4.5],
+          centerZ: [-3.1, 0.2],
+          radiusX: [4.4, 7.2],
+          radiusZ: [1.2, 2.4],
+          vertical: [0.08, 0.26],
+          speedScale: 1.12
+        });
+        addFish("neon", 14, {
+          scale: [0.78, 0.98],
+          centerX: [-3.0, 2.8],
+          centerY: [0.7, 2.0],
+          centerZ: [-1.5, 2.5],
+          radiusX: [3.2, 6.2],
+          radiusZ: [1.6, 3.4],
+          vertical: [0.16, 0.42],
+          speedScale: 1.18
+        });
+        addFish("guppy", 8, {
+          scale: [0.95, 1.2],
+          centerX: [-4.5, 4.5],
+          centerY: [-0.4, 1.2],
+          centerZ: [1.3, 4.8],
+          radiusX: [2.2, 4.0],
+          radiusZ: [0.9, 2.0],
+          vertical: [0.1, 0.36],
+          speedScale: 0.82
+        });
+        addFish("angel", 3, {
+          scale: [1.45, 1.75],
+          centerX: [-2.0, 2.6],
+          centerY: [1.2, 2.9],
+          centerZ: [-2.2, 2.2],
+          radiusX: [3.2, 5.0],
+          radiusZ: [1.2, 2.6],
+          vertical: [0.18, 0.5],
+          speedScale: 0.72
+        });
+        addFish("barb", 7, {
+          scale: [0.9, 1.08],
+          centerX: [-5.2, 5.2],
+          centerY: [0.0, 1.7],
+          centerZ: [-0.5, 3.6],
+          radiusX: [2.8, 5.5],
+          radiusZ: [1.0, 2.5],
+          vertical: [0.12, 0.34],
+          speedScale: 0.95
+        });
+      }
+
+      function updateFish(time) {
+        for (const actor of fishActors) {
+          const t = time * actor.speed * actor.direction + actor.phase;
+          const wobble = Math.sin(time * 0.7 + actor.phase) * 0.18;
+          const x =
+            actor.center.x +
+            Math.cos(t) * actor.radiusX +
+            Math.sin(t * 1.7 + actor.phase) * 0.18 +
+            actor.schoolingOffset.x;
+          const z =
+            actor.center.z +
+            Math.sin(t * 0.82) * actor.radiusZ +
+            Math.cos(t * 1.25 + actor.phase) * 0.22 +
+            actor.schoolingOffset.z;
+          const y =
+            actor.center.y +
+            Math.sin(t * 1.35 + actor.phase) * actor.vertical +
+            wobble * 0.2 +
+            actor.schoolingOffset.y;
+
+          const nextT = t + 0.035 * actor.direction;
+          const next = new THREE.Vector3(
+            actor.center.x + Math.cos(nextT) * actor.radiusX,
+            y,
+            actor.center.z + Math.sin(nextT * 0.82) * actor.radiusZ
+          );
+          const target = new THREE.Vector3(
+            clamp(x, -TANK.width / 2 + 1.0, TANK.width / 2 - 1.0),
+            clamp(y, TANK.bottom + 1.35, TANK.surface - 1.05),
+            clamp(z, TANK.back + 0.9, TANK.front - 0.85)
+          );
+
+          actor.group.position.lerp(target, 0.09);
+          const direction = next.sub(actor.group.position).normalize();
+          const desiredHeading = Math.atan2(-direction.z, direction.x);
+          const headingDelta = Math.atan2(
+            Math.sin(desiredHeading - actor.heading),
+            Math.cos(desiredHeading - actor.heading)
+          );
+          actor.heading += headingDelta * 0.12;
+          actor.group.rotation.y = actor.heading;
+          actor.group.rotation.z = Math.sin(time * 1.3 + actor.phase) * 0.045 - headingDelta * 0.08;
+          actor.group.rotation.x = Math.sin(time * 0.9 + actor.phase) * 0.025;
+          actor.tailPivot.rotation.y = Math.sin(time * (8.0 + actor.speed * 2.0) + actor.phase) * 0.52;
+        }
+      }
+
+      function buildBackdrop() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 16;
+        canvas.height = 256;
+        const ctx = canvas.getContext("2d");
+        const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+        gradient.addColorStop(0, "#f2fff9");
+        gradient.addColorStop(0.28, "#bde4dc");
+        gradient.addColorStop(0.68, "#78b7aa");
+        gradient.addColorStop(1, "#456f5f");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 16, 256);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+        const back = new THREE.Mesh(new THREE.PlaneGeometry(TANK.width * 1.06, TANK.surface - TANK.bottom), material);
+        back.position.set(0, 0.95, TANK.back - 0.04);
+        back.userData.ignoreRay = true;
+        root.add(back);
+      }
+
+      function buildBubbleStreams() {
+        const group = new THREE.Group();
+        group.userData.ignoreRay = true;
+        const bubbleMaterial = new THREE.MeshBasicMaterial({
+          color: 0xdffcff,
+          transparent: true,
+          opacity: 0.35,
+          depthWrite: false
+        });
+        const geometry = new THREE.SphereGeometry(0.045, 8, 6);
+        const streams = [
+          { x: -12.2, z: -4.8, count: 34 },
+          { x: 11.6, z: -5.0, count: 29 },
+          { x: 0.8, z: -5.6, count: 16 }
+        ];
+        streams.forEach((stream, streamIndex) => {
+          for (let i = 0; i < stream.count; i += 1) {
+            const bubble = new THREE.Mesh(geometry, bubbleMaterial.clone());
+            bubble.position.set(
+              stream.x + randRange(-0.12, 0.12),
+              randRange(TANK.bottom + 0.6, TANK.surface - 0.5),
+              stream.z + randRange(-0.12, 0.12)
+            );
+            bubble.scale.setScalar(randRange(0.6, 1.45));
+            bubble.userData.bubble = {
+              baseX: bubble.position.x,
+              baseZ: bubble.position.z,
+              speed: randRange(0.35, 0.85),
+              phase: randRange(0, Math.PI * 2),
+              streamIndex
+            };
+            group.add(bubble);
+          }
+        });
+        root.add(group);
+        return group;
+      }
+
+      function updateBubbles(group, time) {
+        for (const bubble of group.children) {
+          const data = bubble.userData.bubble;
+          bubble.position.y += data.speed * 0.018;
+          if (bubble.position.y > TANK.surface - 0.25) {
+            bubble.position.y = TANK.bottom + randRange(0.5, 1.1);
+          }
+          bubble.position.x = data.baseX + Math.sin(time * 0.8 + data.phase + bubble.position.y) * 0.08;
+          bubble.position.z = data.baseZ + Math.cos(time * 0.65 + data.phase) * 0.08;
+          bubble.material.opacity = 0.22 + Math.sin(time + data.phase) * 0.08;
+        }
+      }
+
+      function particleTexture() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 48;
+        canvas.height = 48;
+        const ctx = canvas.getContext("2d");
+        const gradient = ctx.createRadialGradient(24, 24, 0, 24, 24, 22);
+        gradient.addColorStop(0, "rgba(255,255,255,0.9)");
+        gradient.addColorStop(0.45, "rgba(223,255,246,0.42)");
+        gradient.addColorStop(1, "rgba(223,255,246,0)");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 48, 48);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        return texture;
+      }
+
+      function buildSuspendedParticles() {
+        const count = 760;
+        const positions = [];
+        const phases = [];
+        for (let i = 0; i < count; i += 1) {
+          positions.push(
+            randRange(-13.3, 13.3),
+            randRange(TANK.bottom + 1.0, TANK.surface - 0.45),
+            randRange(TANK.back + 0.35, TANK.front - 0.35)
+          );
+          phases.push(randRange(0, Math.PI * 2));
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+        const material = new THREE.PointsMaterial({
+          color: 0xe6fff8,
+          map: particleTexture(),
+          transparent: true,
+          opacity: 0.32,
+          size: 0.12,
+          sizeAttenuation: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending
+        });
+        const points = new THREE.Points(geometry, material);
+        points.userData.ignoreRay = true;
+        root.add(points);
+        return {
+          points,
+          basePositions: Float32Array.from(positions),
+          phases: Float32Array.from(phases)
+        };
+      }
+
+      function updateSuspendedParticles(system, time) {
+        if (!system) return;
+        const positionAttribute = system.points.geometry.attributes.position;
+        const positions = positionAttribute.array;
+        const base = system.basePositions;
+        for (let i = 0; i < system.phases.length; i += 1) {
+          const index = i * 3;
+          const phase = system.phases[i];
+          positions[index] = base[index] + Math.sin(time * 0.18 + phase) * 0.18;
+          positions[index + 1] = base[index + 1] + Math.sin(time * 0.12 + phase * 1.7) * 0.06;
+          positions[index + 2] = base[index + 2] + Math.cos(time * 0.16 + phase * 0.9) * 0.16;
+        }
+        positionAttribute.needsUpdate = true;
+      }
+
+      createTerrain();
+      createPathRibbon();
+      buildBackdrop();
+      createAquariumGlass();
+      createLightPlanes();
+      buildRocks();
+      buildDriftwood();
+      buildStemPlants();
+      buildRedStemAccents();
+      buildCarpetPlants();
+      const hairgrassGroup = buildHairgrass();
+      buildRosettePlants();
+      buildMossPatches();
+      buildFloatingPlants();
+      buildFish();
+      const bubbleGroup = buildBubbleStreams();
+      const particleSystem = buildSuspendedParticles();
+
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+      let highlighted = null;
+
+      function findQuoteObject(object) {
+        let current = object;
+        while (current) {
+          if (current.userData?.quote) {
+            return current;
+          }
+          current = current.parent;
+        }
+        return null;
+      }
+
+      function setPointer(event) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      }
+
+      function intersections() {
+        raycaster.setFromCamera(pointer, camera);
+        return raycaster
+          .intersectObjects(root.children, true)
+          .filter((hit) => !hit.object.userData?.ignoreRay && findQuoteObject(hit.object))
+          .map((hit) => {
+            const quoteObject = findQuoteObject(hit.object);
+            return {
+              hit,
+              quoteObject,
+              priority: quoteObject.userData.pickPriority ?? 10
+            };
+          })
+          .sort((a, b) => b.priority - a.priority || a.hit.distance - b.hit.distance);
+      }
+
+      function showQuote(data) {
+        quoteTitle.textContent = data.title;
+        quoteText.textContent = `“${data.text}”`;
+        quoteMeta.textContent = data.meta;
+        quotePanel.style.borderLeftColor = data.accent;
+        quotePanel.hidden = false;
+      }
+
+      function clearHighlight() {
+        if (!highlighted) return;
+        highlighted.traverse((child) => {
+          if (child.isMesh && child.material?.emissive && child.userData.previousEmissive) {
+            child.material.emissive.copy(child.userData.previousEmissive);
+            delete child.userData.previousEmissive;
+          }
+        });
+        highlighted = null;
+      }
+
+      function highlight(object) {
+        if (highlighted === object) return;
+        clearHighlight();
+        highlighted = object;
+        object.traverse((child) => {
+          if (child.isMesh && child.material?.emissive) {
+            child.userData.previousEmissive = child.material.emissive.clone();
+            child.material.emissive.set(0x173b34);
+          }
+        });
+      }
+
+      renderer.domElement.addEventListener("pointermove", (event) => {
+        setPointer(event);
+        const hit = intersections()[0];
+        const quoteObject = hit?.quoteObject ?? null;
+        renderer.domElement.classList.toggle("is-hovering", Boolean(quoteObject));
+        if (quoteObject) {
+          highlight(quoteObject);
+        } else {
+          clearHighlight();
+        }
+      });
+
+      renderer.domElement.addEventListener("pointerdown", (event) => {
+        setPointer(event);
+        const hit = intersections()[0];
+        const quoteObject = hit?.quoteObject ?? null;
+        if (quoteObject?.userData.quote) {
+          showQuote(quoteObject.userData.quote);
+        }
+      });
+
+      closeQuote.addEventListener("click", () => {
+        quotePanel.hidden = true;
+      });
+
+      function applyBrightness(value) {
+        const normalized = Number(value) / 100;
+        brightnessValue.textContent = `${value}%`;
+        ambientLight.intensity = 0.65 + normalized * 0.85;
+        keyLight.intensity = 1.1 + normalized * 2.65;
+        rimLight.intensity = 0.45 + normalized * 1.45;
+        fillLight.intensity = 0.55 + normalized * 1.35;
+        waterMaterial.opacity = clamp(0.18 + normalized * 0.18, 0.18, 0.45);
+        causticMaterial.uniforms.uBrightness.value = normalized;
+        renderer.toneMappingExposure = 0.7 + normalized * 0.5;
+      }
+
+      brightnessInput.addEventListener("input", (event) => {
+        applyBrightness(event.target.value);
+      });
+      applyBrightness(brightnessInput.value);
+
+      function updateWater(time) {
+        const positions = waterGeometry.attributes.position;
+        for (let i = 0; i < positions.count; i += 1) {
+          const baseIndex = i * 3;
+          const x = baseWater[baseIndex];
+          const z = baseWater[baseIndex + 2];
+          const wave = Math.sin(x * 0.65 + time * 1.4) * 0.045 + Math.cos(z * 0.75 + time * 1.05) * 0.035;
+          positions.setY(i, baseWater[baseIndex + 1] + wave);
+        }
+        positions.needsUpdate = true;
+        waterGeometry.computeVertexNormals();
+      }
+
+      function updateCameraTransition() {
+        if (!cameraTransition) return;
+        camera.position.lerp(cameraTransition.position, 0.055);
+        controls.target.lerp(cameraTransition.target, 0.055);
+        if (
+          camera.position.distanceTo(cameraTransition.position) < 0.03 &&
+          controls.target.distanceTo(cameraTransition.target) < 0.02
+        ) {
+          camera.position.copy(cameraTransition.position);
+          controls.target.copy(cameraTransition.target);
+          cameraTransition = null;
+        }
+      }
+
+      function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+      window.addEventListener("resize", onResize);
+
+      const clock = new THREE.Clock();
+      renderer.setAnimationLoop(() => {
+        const time = clock.getElapsedTime();
+        updateCameraTransition();
+        controls.update();
+        updateWater(time);
+        causticMaterial.uniforms.uTime.value = time;
+        updateHairgrass(hairgrassGroup, time);
+        updateFish(time);
+        updateBubbles(bubbleGroup, time);
+        updateSuspendedParticles(particleSystem, time);
+        renderer.render(scene, camera);
+      });
+    </script>
+  </body>
+</html>

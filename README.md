@@ -1,6 +1,6 @@
 # AquaGarden Bench
 
-같은 요구사항 하나를 서로 다른 AI 모델에게 주고 받은 **브라우저 전용 3D 수족관** 열 개를,
+같은 핵심 요구사항을 서로 다른 AI 모델에게 주고 받은 **브라우저 전용 3D 수족관** 열두 개를,
 한 페이지에서 골라 실행하고 비교하는 갤러리입니다.
 
 **라이브**: https://outliner-coach.github.io/aquagarden-bench/
@@ -9,7 +9,8 @@
 
 ## 공통 요구사항
 
-열 버전 모두 같은 프롬프트와 같은 참고 사진 한 장에서 출발했습니다.
+열두 버전은 모두 같은 핵심 요구사항에서 출발했습니다.
+기존 열 개는 공통 프롬프트와 사진을, 2026년 5월의 07·08은 별도 문장과 같은 두 번째 사진을 사용했습니다.
 다만 **제작 조건은 서로 다릅니다** — 아래 「제작 조건」 절을 먼저 봐주세요.
 갤러리의 **프롬프트** 탭에서 원문과 이미지를 나란히 볼 수 있고,
 원문 파일은 [prompt.md](https://github.com/outliner-coach/aquagarden_gemini_flash_3.5/blob/main/prompt.md) 에 있습니다.
@@ -37,16 +38,19 @@
 | 04 | Codex 5.3 exhigh | Codex | 2026-02-22 | 40 KB · 1,303줄 | 0.161.0 | Slack |
 | 05 | Gemini 3.1 Pro | Antigravity | 2026-02-22 | 38 KB · 1,078줄 | 0.128.0 | Slack |
 | 06 | Codex | OpenAI Codex CLI | 2026-03-05 | 98 KB · 3,116줄 | 0.161.0 | [aquagarden_codex](https://github.com/outliner-coach/aquagarden_codex) |
-| 07 | Gemini Flash 3.5 | 단일 파일 프로토타입 | 2026-05-20 | 49 KB · 1,066줄 | 0.128.0 | [aquagarden_gemini_flash_3.5](https://github.com/outliner-coach/aquagarden_gemini_flash_3.5) |
-| 08 | ox Alpha - GLM 5.3 | OpenCode | 2026-08-23 | 47 KB · 1,153줄 | 0.185.1 | [aquagarden_omo](https://github.com/outliner-coach/aquagarden_omo) |
-| 09 | Claude Fable 5.1 | Claude Code | 2026-09-02 | 100 KB · 2,301줄 | 0.170.0 | 이 저장소 |
-| 10 | GPT-6 Astra | OpenAI Codex · xhigh | 2026-09-05 | 47 KB · 546줄 | 0.170.0 | 이 저장소 |
+| 07 | Claude Code · 2026.05 | Claude Code · 모델 기록 없음 | 2026-05-08 | 35 KB · 1,020줄 | 0.160.0 | AI 폴더 보관본 |
+| 08 | GPT-5.5 xhigh · 2026.05 | OpenAI Codex | 2026-05-09 | 72 KB · 2,075줄 | 0.164.1 | AI 폴더 + Codex 세션 |
+| 09 | Gemini Flash 3.5 | 단일 파일 프로토타입 | 2026-05-20 | 49 KB · 1,066줄 | 0.128.0 | [aquagarden_gemini_flash_3.5](https://github.com/outliner-coach/aquagarden_gemini_flash_3.5) |
+| 10 | ox Alpha - GLM 5.3 | OpenCode | 2026-08-23 | 47 KB · 1,153줄 | 0.185.1 | [aquagarden_omo](https://github.com/outliner-coach/aquagarden_omo) |
+| 11 | Claude Fable 5.1 | Claude Code | 2026-09-02 | 100 KB · 2,301줄 | 0.170.0 | 이 저장소 |
+| 12 | GPT-6 Astra | OpenAI Codex · xhigh | 2026-09-05 | 47 KB · 546줄 | 0.170.0 | 이 저장소 |
 
-01·06·07·08 은 원본 저장소에서, 03·04·05 는 사내 슬랙에 공유된 첨부 파일에서
-**수정 없이 그대로** 가져왔습니다. 02 는 `gh-pages` 빌드를 그대로 받아
-자산 경로만 상대 경로로 고쳤습니다. 09·10 은 이 저장소에서 처음 만들어졌습니다.
+01·06·09·10 은 원본 저장소에서, 03·04·05 는 사내 슬랙에 공유된 첨부 파일에서,
+07·08 은 `/Users/friends/ai`의 과거 테스트 폴더에서 **수정 없이 그대로** 가져왔습니다.
+02 는 `gh-pages` 빌드를 그대로 받아 자산 경로만 상대 경로로 고쳤습니다.
+11·12 는 이 저장소에서 처음 만들어졌습니다.
 
-02 를 뺀 아홉 개는 HTML 파일 하나로 끝나고, 02 만 React 빌드라 번들이 함께 들어 있습니다.
+02 를 뺀 열한 개는 HTML 파일 하나로 끝나고, 02 만 React 빌드라 번들이 함께 들어 있습니다.
 
 제외한 것: `aquagarden-for-builder`(요청에 따라).
 
@@ -56,17 +60,20 @@
 
 ```
 index.html                                  갤러리 (수조 · 비교표 · 프롬프트)
-assets/reference.jpg                        열 버전이 공유한 참고 이미지
+assets/reference.jpg                        기존 열 버전의 공통 참고 이미지
+assets/reference-2026-05.webp               07·08 이 공유한 2026년 5월 참고 이미지
 versions/gpt-canvas/index.html              01
 versions/gemini-3-antigravity/              02  React 빌드 (index.html + assets/)
 versions/opus-4-6/index.html                03
 versions/codex-5-3/index.html               04
 versions/gemini-3-1-pro/index.html          05
 versions/codex/index.html                   06
-versions/gemini-flash-3-5/index.html        07
-versions/glm-5-3/index.html                 08
-versions/claude-fable-5-1/index.html        09
-versions/Gpt 6 astra/index.html            10
+versions/claude-code-2026-05/index.html     07
+versions/gpt-5-5-xhigh/index.html           08
+versions/gemini-flash-3-5/index.html        09
+versions/glm-5-3/index.html                 10
+versions/claude-fable-5-1/index.html        11
+versions/Gpt 6 astra/index.html             12
 ```
 
 갤러리는 선택한 버전 **하나만** iframe으로 불러옵니다.
@@ -102,7 +109,7 @@ python3 -m http.server 8790
 
 ## 제작 조건 — 같은 조건이 아닙니다
 
-**열 개가 모두 프롬프트 한 번으로 나온 것은 아닙니다.**
+**열두 개가 모두 같은 프롬프트 한 번으로 나온 것은 아닙니다.**
 한 번에 끝난 것과 몇 시간 고쳐가며 만든 것을 나란히 놓고 우열을 가릴 수는 없으니,
 아래를 전제로 나머지 표를 봐주세요.
 
@@ -114,10 +121,12 @@ python3 -m http.server 8790
 | 04 | Codex 5.3 exhigh | 원 프롬프트 | 같은 날 3종 동시 비교 |
 | 05 | Gemini 3.1 Pro | 원 프롬프트 | 같은 날 3종 동시 비교. 약 10분 |
 | 06 | Codex | **반복 수정** | 계획서와 진행 기록을 남기며 여러 커밋에 걸쳐 다듬음 |
-| 07 | Gemini Flash 3.5 | 확인 안 됨 | 기록 없음 |
-| 08 | ox Alpha - GLM 5.3 | 확인 안 됨 | 기록 없음 |
-| 09 | Claude Fable 5.1 | 원 프롬프트 + 보완 1회 | 만든 뒤 참고 사진과 대조해 하드스케이프와 수초를 한 차례 다듬음 |
-| 10 | GPT-6 Astra | 원 프롬프트 + 실행 검증 | 공통 원문·사진으로 구현하고 브라우저 검증 및 필요한 보정을 수행. 무수정 단일 응답 측정은 아님 |
+| 07 | Claude Code · 2026.05 | 원 프롬프트 추정 | 같은 시각·사진의 비교본이나 대화 원문과 정확한 모델명은 기록 없음 |
+| 08 | GPT-5.5 xhigh · 2026.05 | 원 프롬프트 + 보완 1회 | 최초 구현 이틀 뒤 “더 잘 만들어봅시다”로 개선 |
+| 09 | Gemini Flash 3.5 | 확인 안 됨 | 기록 없음 |
+| 10 | ox Alpha - GLM 5.3 | 확인 안 됨 | 기록 없음 |
+| 11 | Claude Fable 5.1 | 원 프롬프트 + 보완 1회 | 만든 뒤 참고 사진과 대조해 하드스케이프와 수초를 한 차례 다듬음 |
+| 12 | GPT-6 Astra | 원 프롬프트 + 실행 검증 | 공통 원문·사진으로 구현하고 브라우저 검증 및 필요한 보정을 수행. 무수정 단일 응답 측정은 아님 |
 
 특히 **02 는 순수 Gemini 3 결과물로 보기 어렵습니다.** 중간에 모델을 갈아탔습니다.
 
@@ -133,6 +142,8 @@ python3 -m http.server 8790
 | Codex 5.3 exhigh | 3종 29마리 | 있음 | 있음 |
 | Gemini 3.1 Pro | 5종 19마리 | 있음 | 있음 |
 | Codex | 3종 16마리 | 있음 | 있음 |
+| Claude Code · 2026.05 | 4종 50마리 | 있음 | 있음 |
+| GPT-5.5 xhigh · 2026.05 | 5종 47마리 | 밝기 하나 | 있음 |
 | Gemini Flash 3.5 | 3종 10마리 | 있음 | 있음 |
 | ox Alpha - GLM 5.3 | 4종 18마리 | 있음 | 있음 |
 | Claude Fable 5.1 | 5종 20마리 | 있음 | 있음 |
@@ -142,22 +153,30 @@ python3 -m http.server 8790
 - **Gemini 3 / Antigravity** — 씬 위 여섯 지점을 클릭해봤지만 DOM 이 전혀 변하지 않고,
   번들 어디에도 한국어 문자열이 없습니다. 명언 상태를 담을 스토어는 만들어놨지만 아무도 호출하지 않습니다.
 
-물고기 종 수는 열 개 모두 통과했습니다.
+물고기 종 수는 열두 개 모두 통과했습니다.
 
 ## 알려진 특이사항
 
 원본을 그대로 두는 게 벤치마크의 요점이라, 아래는 **고치지 않고 남겨둔 것들**입니다.
 모두 화면에는 영향이 없고 콘솔에서만 보입니다.
 
-- **08 ox Alpha - GLM 5.3** — 로딩 직후 `GL_INVALID_FRAMEBUFFER_OPERATION` 경고가 100개 가까이 쏟아집니다.
+- **10 ox Alpha - GLM 5.3** — 로딩 직후 `GL_INVALID_FRAMEBUFFER_OPERATION` 경고가 100개 가까이 쏟아집니다.
   `renderer.setSize` 를 iframe 의 실제 크기가 잡히기 전에 부르는 탓으로 보이며,
   로딩 화면이 3~11초로 들쭉날쭉합니다. 결국에는 정상적으로 렌더링됩니다.
 - **01 GPT-5** — 자체 `console.assert` 가 매번 실패합니다
   ("몸통에 onBeforeCompile 셰이더가 적용되어야 합니다"). 화면은 의도대로 나옵니다.
-- **07 Gemini Flash 3.5** — Tailwind 를 CDN 스크립트로 불러와 프로덕션 경고가 뜹니다.
+- **09 Gemini Flash 3.5** — Tailwind 를 CDN 스크립트로 불러와 프로덕션 경고가 뜹니다.
 - **02 Gemini 3 / Antigravity** — 번들이 1.4 MB 라 첫 렌더까지 몇 초 걸립니다.
 
-## 09번 버전에 대하여
+## 07·08번 과거 테스트에 대하여
+
+AI 폴더를 전체 검색해 기존 벤치와 체크섬이 겹치지 않는 독립 실행본 두 개를 복구했습니다.
+두 파일은 같은 1024 × 506 참고 이미지를 공유하지만 기존 열 개와는 프롬프트 문장이 조금 다릅니다.
+
+- 07 Claude Code: [출처와 판정 기록](versions/claude-code-2026-05/README.md)
+- 08 GPT-5.5 xhigh: [출처와 판정 기록](versions/gpt-5-5-xhigh/README.md), [확인된 프롬프트](versions/gpt-5-5-xhigh/prompt.md)
+
+## 11번 버전에 대하여
 
 Claude Code(Fable 5.1)로 만든 버전입니다. 자세한 내용은
 [versions/claude-fable-5-1/README.md](versions/claude-fable-5-1/README.md) 를 보세요.
@@ -168,7 +187,7 @@ Claude Code(Fable 5.1)로 만든 버전입니다. 자세한 내용은
 - 조명 프리셋 4종(주광·석양·달빛·RGB)과 밝기·색온도·물 색조 슬라이더.
 - 13개 오브젝트 그룹에 각각 5~6개의 한국어 명언.
 
-## 10번 버전에 대하여
+## 12번 버전에 대하여
 
 GPT-6 Astra(`xhigh`)로 공통 원문과 사진을 사용해 새로 만든 버전입니다.
 [제작 조건과 구현·검증 기록](versions/Gpt%206%20astra/README.md)을 참고하세요.
