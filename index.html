@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AquaGarden Bench</title>
-<meta name="description" content="같은 프롬프트와 사진 한 장으로 아홉 번에 걸쳐 만든 브라우저 3D 수족관을 나란히 실행하고 비교합니다.">
+<meta name="description" content="같은 프롬프트와 사진 한 장으로 열 번에 걸쳐 만든 브라우저 3D 수족관을 나란히 실행하고 비교합니다.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -312,9 +312,9 @@ td.mark{text-align:center}
   <header class="head">
     <div class="brand">
       <h1>AquaGarden <em>Bench</em></h1>
-      <p>같은 프롬프트, 아홉 번의 시도. 브라우저만으로 도는 3D 수족관.</p>
+      <p>같은 프롬프트, 열 번의 시도. 브라우저만으로 도는 3D 수족관.</p>
     </div>
-    <p class="tally"><b id="tallyN">5</b> builds &nbsp;·&nbsp; <b id="tallySpan">13</b> months &nbsp;·&nbsp; <b>1</b> prompt</p>
+    <p class="tally"><b id="tallyN">10</b> builds &nbsp;·&nbsp; <b id="tallySpan">13</b> months &nbsp;·&nbsp; <b>1</b> prompt</p>
     <div class="seg" role="tablist" aria-label="보기 전환">
       <button role="tab" id="tabTank" aria-selected="true" aria-controls="paneTank">수조</button>
       <button role="tab" id="tabCmp" aria-selected="false" aria-controls="paneCmp">비교표</button>
@@ -364,7 +364,7 @@ td.mark{text-align:center}
             <img src="assets/reference.jpg" width="441" height="261" loading="eager" decoding="async"
                  alt="참고한 실제 수조 사진. 왼쪽에 이끼 낀 유목과 녹색 수초, 가운데에 회백색 바위 더미, 오른쪽에 붉은 수초와 빨간 베타, 앞쪽 바닥에는 어두운 소일이 깔려 있습니다.">
           </a>
-          <figcaption>참고 이미지 · 441 × 261 · 아홉 버전 모두 이 수조 사진 한 장을 기준으로 만들어졌습니다</figcaption>
+          <figcaption>참고 이미지 · 441 × 261 · 열 버전 모두 이 수조 사진 한 장을 기준으로 만들어졌습니다</figcaption>
         </figure>
 
         <div class="prompt">
@@ -401,7 +401,7 @@ td.mark{text-align:center}
           <p class="tail">인터랙티브하게 감상할 수 있는 Html 파일로 만들어주세요.</p>
 
           <p class="src">
-            <b style="color:var(--umber)">다만 아홉 개가 모두 이 프롬프트 한 번으로 나온 것은 아닙니다.</b>
+            <b style="color:var(--umber)">다만 열 개가 모두 이 프롬프트 한 번으로 나온 것은 아닙니다.</b>
             01 과 02 는 몇 시간에 걸쳐 고쳐가며 만들었고, 02 는 도중에 다른 모델로 갈아타기도 했습니다.
             어떤 조건에서 만들어졌는지는 비교표의 <b>제작 조건</b> 표에 정리해두었습니다.
           </p>
@@ -409,7 +409,7 @@ td.mark{text-align:center}
             원문은 <a href="https://github.com/outliner-coach/aquagarden_gemini_flash_3.5/blob/main/prompt.md" target="_blank" rel="noopener">prompt.md</a> 에 있습니다.
             회차마다 문장을 조금씩 다듬었고, 2026년 2월 3종 비교 때는 같은 사진을
             <code>@스크린샷 2026-02-22 오전 7.59.29.png</code> 로 첨부했습니다.
-            표현은 달라도 요구사항 자체는 아홉 버전 내내 그대로였습니다.
+            표현은 달라도 요구사항 자체는 열 버전 내내 그대로였습니다.
           </p>
         </div>
 
@@ -506,6 +506,15 @@ const VERSIONS = [
     build:{label:"원 프롬프트 + 보완 1회",tone:"one",detail:"원 프롬프트로 만든 뒤, 참고 사진과 대조해 하드스케이프와 수초를 한 차례 다듬었습니다."},
     req:{sp:5,fish:20,light:2,quote:1},
     f:{shader:1,instancing:1,caustics:1,shadow:1,aces:1,fog:1,tube:1,boids:1}
+  },
+  {
+    slug:"gpt-6-astra", path:"versions/Gpt%206%20astra/index.html", name:"GPT-6 Astra", tool:"OpenAI Codex", date:"2026-09-05",
+    repo:"https://github.com/outliner-coach/aquagarden-bench/blob/main/versions/Gpt%206%20astra/index.html",
+    bytes:48145, lines:546, three:"0.170.0", cdn:"jsDelivr",
+    note:"공통 사진의 왼쪽 유목과 녹색 수초, 중앙의 층진 바위, 오른쪽 붉은 수초를 절차적 3D로 구현했습니다. 5종 24마리, 두 테트라 종의 군영, 조명 3종과 밝기·색온도, 오브젝트별 창작 문장을 제공합니다.",
+    build:{label:"원 프롬프트 + 실행 검증",tone:"one",detail:"GPT-6 Astra(xhigh), 공통 원문과 참고 사진을 입력으로 사용했습니다. 기존 버전 코드를 재사용하지 않고 구현했으며, 브라우저 실행·상호작용 검증과 필요한 보정을 포함합니다. 무수정 단일 응답 측정은 아닙니다."},
+    req:{sp:5,fish:24,light:2,quote:1},
+    f:{shader:1,instancing:1,caustics:1,shadow:1,aces:1,fog:1,tube:1,boids:1}
   }
 ];
 
@@ -580,7 +589,7 @@ function select(slug){
   nowName.textContent = v.name;
   nowMeta.innerHTML = ko(v.date) + "  ·  three " + v.three + (v.bytes ? "  ·  " + kb(v.bytes) : "") +
     '  ·  <span class="b-' + v.build.tone + '">' + v.build.label + '</span>';
-  const url = "versions/" + v.slug + "/index.html";
+  const url = v.path || "versions/" + v.slug + "/index.html";
   btnOpen.href = url;
   btnSrc.href = v.repo;
 
@@ -640,7 +649,7 @@ const LIGHT_LABEL = ["없음", "밝기 하나", "있음"];
 
 cmp.innerHTML =
   '<h2>제작 조건</h2>' +
-  '<p class="sub">아래 표들을 읽기 전에 봐야 할 전제입니다. 아홉 개가 모두 같은 조건에서 만들어지지는 않았습니다. 한 번의 프롬프트로 끝난 것과, 몇 시간에 걸쳐 고쳐가며 만든 것을 나란히 놓고 우열을 가릴 수는 없습니다.</p>' +
+  '<p class="sub">아래 표들을 읽기 전에 봐야 할 전제입니다. 열 개가 모두 같은 조건에서 만들어지지는 않았습니다. 한 번의 프롬프트로 끝난 것과, 몇 시간에 걸쳐 고쳐가며 만든 것을 나란히 놓고 우열을 가릴 수는 없습니다.</p>' +
   '<div class="twrap"><table><thead><tr>' +
     '<th>모델</th><th>제작 방식</th><th style="white-space:normal">비고</th>' +
   '</tr></thead><tbody>' +
@@ -666,7 +675,7 @@ cmp.innerHTML =
       (v.req.quote ? '있음' : '없음') + '</span></td></tr>'
   ).join("") +
   '</tbody></table></div>' +
-  '<p class="note">아홉 번의 시도 중 두 번은 요구사항을 빠뜨렸습니다. GPT-5 는 조명 조절 UI를 아예 만들지 않았고(파일 전체에 입력 요소가 하나도 없습니다), Gemini 3 / Antigravity 는 오브젝트를 클릭해도 아무 일이 일어나지 않습니다. 씬 위 여섯 지점을 눌러봤지만 DOM 은 변하지 않았고, 번들 어디에도 한국어 문자열이 없습니다.</p>' +
+  '<p class="note">열 번의 시도 중 두 번은 요구사항을 빠뜨렸습니다. GPT-5 는 조명 조절 UI를 아예 만들지 않았고(파일 전체에 입력 요소가 하나도 없습니다), Gemini 3 / Antigravity 는 오브젝트를 클릭해도 아무 일이 일어나지 않습니다. 씬 위 여섯 지점을 눌러봤지만 DOM 은 변하지 않았고, 번들 어디에도 한국어 문자열이 없습니다.</p>' +
 
   '<h2>규모</h2>' +
   '<p class="sub">파일 크기와 줄 수는 배포된 파일에서 직접 잰 값이고, 날짜는 원본 저장소의 커밋 날짜입니다.</p>' +
@@ -686,7 +695,7 @@ cmp.innerHTML =
   '</tbody></table></div>' +
 
   '<h2>기법</h2>' +
-  '<p class="sub">아홉 개 파일의 코드를 직접 읽어 판정했습니다. 이름이 아니라 실제 동작 기준이라, 예를 들어 코스틱은 바닥에 무늬를 드리우는 경우만 인정하고 물속에 떠 있는 광선 기둥은 제외했으며, 군영은 결속·정렬·분리 중 둘 이상을 이웃과 계산하는 경우만 인정했습니다.</p>' +
+  '<p class="sub">각 버전의 코드를 직접 읽어 판정했습니다. 이름이 아니라 실제 동작 기준이라, 예를 들어 코스틱은 바닥에 무늬를 드리우는 경우만 인정하고 물속에 떠 있는 광선 기둥은 제외했으며, 군영은 결속·정렬·분리 중 둘 이상을 이웃과 계산하는 경우만 인정했습니다.</p>' +
   '<div class="twrap"><table><thead><tr><th>모델</th>' +
     FEATURES.map(f => '<th title="' + f[2] + '">' + f[1] + '</th>').join("") +
   '</tr></thead><tbody>' +
@@ -708,7 +717,7 @@ cmp.innerHTML =
     '<td style="white-space:normal;color:var(--stone)">' + v.note + '</td></tr>'
   ).join("") +
   '</tbody></table></div>' +
-  '<p class="note">* Gemini 3 / Antigravity 버전만 단일 HTML 이 아니라 React 빌드라, 크기는 번들 전체(JS · CSS · HTML)를 합한 값입니다. 나머지 여덟 개는 HTML 파일 하나의 크기입니다.</p>' +
+  '<p class="note">* Gemini 3 / Antigravity 버전만 단일 HTML 이 아니라 React 빌드라, 크기는 번들 전체(JS · CSS · HTML)를 합한 값입니다. 나머지 아홉 개는 HTML 파일 하나의 크기입니다.</p>' +
   '<p class="note">모든 버전은 동일한 요구사항 하나로 만들어졌습니다 — 수초와 유목과 바위로 꾸민 3D 수조, 흔들리는 수초와 올라오는 기포, 3종 이상의 자유 유영 물고기, 조절 가능한 조명, 오브젝트를 클릭하면 나오는 명언.</p>';
 
 /* ── tabs ───────────────────────────────────────────── */
