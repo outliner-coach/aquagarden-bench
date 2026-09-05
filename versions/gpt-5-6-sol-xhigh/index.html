@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>AquaGarden · GPT-5.6 Sol xhigh</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --glass: rgba(5, 22, 27, .72);
+      --line: rgba(170, 235, 220, .22);
+      --mint: #b8f0d5;
+      --muted: #96b7af;
+      --focus: #f8d58c;
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body {
+      background: #06171b;
+      color: #eefbf6;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    #aquarium { position: fixed; inset: 0; }
+    canvas { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
+    canvas:focus-visible { outline: 3px solid var(--focus); outline-offset: -5px; }
+    .topbar {
+      position: fixed; z-index: 10; top: max(14px, env(safe-area-inset-top)); left: 16px; right: 16px;
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+      pointer-events: none;
+    }
+    .brand, .controls, .quote {
+      background: var(--glass); border: 1px solid var(--line); box-shadow: 0 12px 42px rgba(0,0,0,.25);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .brand { padding: 12px 15px; border-radius: 14px; }
+    .eyebrow { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: #9ed3c2; }
+    h1 { margin: 3px 0 1px; font-size: clamp(18px, 2.2vw, 27px); font-weight: 580; letter-spacing: -.03em; }
+    #status { font-size: 11px; color: var(--muted); }
+    .controls {
+      pointer-events: auto; display: flex; align-items: center; gap: 8px; padding: 8px;
+      border-radius: 15px;
+    }
+    .light-control { display: grid; grid-template-columns: auto minmax(92px, 150px); gap: 1px 8px; align-items: center; }
+    .light-control label { grid-row: 1 / 3; font-size: 11px; color: var(--muted); }
+    input[type="range"] { width: 100%; accent-color: #f2d7a1; }
+    #light-value { font-size: 10px; color: #d9eee7; line-height: 1; text-align: right; }
+    button {
+      min-width: 40px; min-height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px;
+      color: #eaf8f3; background: rgba(149, 215, 194, .08); font: inherit; font-size: 12px; cursor: pointer;
+    }
+    button:hover { background: rgba(149, 215, 194, .17); }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .quote {
+      position: fixed; z-index: 12; left: 50%; bottom: max(22px, env(safe-area-inset-bottom));
+      width: min(620px, calc(100% - 32px)); padding: 17px 48px 17px 19px; border-radius: 15px;
+      transform: translate(-50%, 24px); opacity: 0; pointer-events: none;
+      transition: opacity .24s ease, transform .24s ease;
+    }
+    .quote.visible { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+    .quote strong { display: block; margin-bottom: 5px; color: #9ed3c2; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; }
+    .quote p { margin: 0; font-family: Georgia, "Noto Serif KR", serif; font-size: clamp(13px, 1.7vw, 17px); line-height: 1.6; }
+    .quote-close { position: absolute; right: 8px; top: 8px; min-width: 32px; min-height: 32px; padding: 0; }
+    .hint {
+      position: fixed; z-index: 8; left: 17px; bottom: max(15px, env(safe-area-inset-bottom));
+      margin: 0; color: rgba(221, 244, 236, .72); font-size: 10px; letter-spacing: .04em;
+      text-shadow: 0 1px 8px #001216; pointer-events: none;
+    }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    .loading { position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; background: #06171b; transition: opacity .45s ease; }
+    .loading.done { opacity: 0; pointer-events: none; }
+    .loading div { color: #b8ddd1; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
+    @media (max-width: 720px) {
+      .topbar { top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px; display: block; }
+      .brand { width: fit-content; max-width: 100%; padding: 9px 12px; }
+      .eyebrow { display: none; }
+      h1 { font-size: 18px; margin: 0; }
+      #status { font-size: 10px; }
+      .controls { position: fixed; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); justify-content: center; padding: 6px; }
+      .light-control { flex: 1; grid-template-columns: auto minmax(64px, 1fr); }
+      button { min-width: 38px; min-height: 36px; padding: 0 8px; }
+      button span { display: none; }
+      .hint { display: none; }
+      .quote { bottom: calc(62px + env(safe-area-inset-bottom)); }
+    }
+    @media (prefers-reduced-motion: reduce) { .quote, .loading { transition: none; } }
+  </style>
+  <script type="importmap">
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}
+  </script>
+</head>
+<body>
+  <main id="aquarium" aria-label="상호작용 가능한 3D 자연 수족관"></main>
+  <div class="loading" id="loading" aria-live="polite"><div>수중 정원 채우는 중</div></div>
+  <header class="topbar">
+    <section class="brand" aria-label="작품 정보">
+      <div class="eyebrow">Living Aquascape · GPT-5.6 Sol</div>
+      <h1>유목 아래 흐르는 숲</h1>
+      <div id="status">물고기 40 · 네 종 · 흐르는 시간</div>
+    </section>
+    <section class="controls" aria-label="수족관 제어">
+      <div class="light-control">
+        <label for="light">조명</label>
+        <input id="light" type="range" min="25" max="140" value="92" aria-valuetext="92 퍼센트">
+        <output id="light-value" for="light">92%</output>
+      </div>
+      <button id="quote-btn" type="button" title="명언 보기 (Q)" aria-label="다음 수족관 명언 보기">“”</button>
+      <button id="pause-btn" type="button" title="일시정지 (Space 또는 P)" aria-pressed="false">Ⅱ <span>멈춤</span></button>
+      <button id="reset-btn" type="button" title="초기화 (R)">↺ <span>초기화</span></button>
+      <button id="full-btn" type="button" title="전체화면 (F)" aria-label="전체화면 전환">⛶</button>
+    </section>
+  </header>
+  <aside id="quote" class="quote" role="status" aria-live="polite">
+    <strong id="quote-kind">물고기</strong>
+    <p id="quote-text"></p>
+    <button class="quote-close" id="quote-close" type="button" aria-label="명언 닫기">×</button>
+  </aside>
+  <p class="hint">오브젝트 클릭 · 드래그로 시점 이동 · 휠로 확대 · Space 멈춤 · R 초기화 · F 전체화면</p>
+  <div id="a11y-state" class="sr-only" aria-live="polite"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    const mount = document.querySelector('#aquarium');
+    const loading = document.querySelector('#loading');
+    const statusEl = document.querySelector('#status');
+    const a11yState = document.querySelector('#a11y-state');
+    const lightInput = document.querySelector('#light');
+    const lightValue = document.querySelector('#light-value');
+    const pauseButton = document.querySelector('#pause-btn');
+    const resetButton = document.querySelector('#reset-btn');
+    const fullButton = document.querySelector('#full-btn');
+    const quoteButton = document.querySelector('#quote-btn');
+    const quotePanel = document.querySelector('#quote');
+    const quoteKind = document.querySelector('#quote-kind');
+    const quoteText = document.querySelector('#quote-text');
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x071d22);
+    scene.fog = new THREE.FogExp2(0x0a272a, 0.032);
+
+    const camera = new THREE.PerspectiveCamera(37, innerWidth / innerHeight, 0.1, 120);
+    camera.position.set(0.5, 5.5, 24.5);
+    camera.lookAt(0, 1.2, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.8));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.domElement.tabIndex = 0;
+    renderer.domElement.setAttribute('aria-label', '3D 수족관 장면. 오브젝트를 클릭하면 명언을 들을 수 있습니다.');
+    mount.appendChild(renderer.domElement);
+
+    let seed = 85619;
+    const random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+    const range = (a, b) => a + (b - a) * random();
+
+    const state = {
+      paused: false,
+      simTime: 0,
+      light: 0.92,
+      manual: false,
+      quoteCategory: null,
+      quoteText: null,
+      cameraYaw: 0,
+      cameraPitch: 0,
+      cameraDistance: 24.5
+    };
+
+    const clickable = [];
+    function tag(object, category) {
+      object.traverse(child => {
+        if (child.isMesh) {
+          child.userData.quoteCategory = category;
+          clickable.push(child);
+        }
+      });
+      return object;
+    }
+
+    const quotes = {
+      fish: ['물고기처럼, 흐름과 다투지 말고 그 안에서 방향을 찾으세요.'],
+      plant: ['흔들리는 것은 약해서가 아니라, 물의 말을 듣고 있기 때문입니다.'],
+      wood: ['오래된 나무는 사라지지 않고 다른 생명의 그늘이 됩니다.'],
+      rock: ['돌은 서두르지 않지만 물의 모든 계절을 기억합니다.'],
+      bubble: ['가벼워진 생각은 마침내 수면을 만납니다.'],
+      sand: ['모든 깊은 풍경은 작은 알갱이 하나에서 시작됩니다.']
+    };
+    const categoryNames = { fish: '물고기', plant: '수초', wood: '유목', rock: '바위', bubble: '기포', sand: '모래' };
+    const quoteOrder = ['fish', 'plant', 'wood', 'rock', 'bubble', 'sand'];
+    let quoteIndex = 0;
+    let quoteTimer;
+
+    function showQuote(category) {
+      const text = quotes[category]?.[0] || quotes.fish[0];
+      state.quoteCategory = category;
+      state.quoteText = text;
+      quoteKind.textContent = categoryNames[category] || '수족관';
+      quoteText.textContent = `“${text}”`;
+      quotePanel.classList.add('visible');
+      clearTimeout(quoteTimer);
+      quoteTimer = setTimeout(hideQuote, 6500);
+    }
+    function hideQuote() {
+      quotePanel.classList.remove('visible');
+      state.quoteCategory = null;
+      state.quoteText = null;
+    }
+
+    const hemi = new THREE.HemisphereLight(0xb9e9e2, 0x102119, 1.35);
+    scene.add(hemi);
+    const sun = new THREE.DirectionalLight(0xffe6bc, 3.2);
+    sun.position.set(-5, 12, 8);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.left = -16; sun.shadow.camera.right = 16;
+    sun.shadow.camera.top = 12; sun.shadow.camera.bottom = -4;
+    scene.add(sun);
+    const aquaLight = new THREE.PointLight(0x50d6cb, 18, 27, 2);
+    aquaLight.position.set(9, 5, 4);
+    scene.add(aquaLight);
+
+    // Subtle animated water shafts, entirely procedural.
+    const waterUniforms = { uTime: { value: 0 }, uLight: { value: state.light } };
+    const waterBackdrop = new THREE.Mesh(
+      new THREE.PlaneGeometry(42, 24, 1, 1),
+      new THREE.ShaderMaterial({
+        uniforms: waterUniforms,
+        transparent: true,
+        depthWrite: false,
+        vertexShader: `varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+        fragmentShader: `
+          varying vec2 vUv; uniform float uTime; uniform float uLight;
+          float beam(float x,float p,float w){return smoothstep(w,0.,abs(x-p));}
+          void main(){
+            float wave=sin(vUv.y*17.+uTime*.34)*.025+sin(vUv.y*31.-uTime*.21)*.012;
+            float rays=beam(vUv.x+wave,.23,.12)+beam(vUv.x-wave,.56,.16)*.65+beam(vUv.x+wave,.82,.1)*.48;
+            float depth=(1.-vUv.y)*.55;
+            vec3 c=mix(vec3(.01,.10,.12),vec3(.04,.28,.25),vUv.y)*uLight;
+            c+=vec3(.10,.30,.22)*rays*vUv.y*.26*uLight;
+            gl_FragColor=vec4(c, .58+depth*.18);
+          }`
+      })
+    );
+    waterBackdrop.position.set(0, 4, -8.5);
+    scene.add(waterBackdrop);
+
+    // Sand floor with a darker foreground lip echoing the reference photograph.
+    const sandGeometry = new THREE.PlaneGeometry(34, 17, 70, 34);
+    const sandPosition = sandGeometry.attributes.position;
+    for (let i = 0; i < sandPosition.count; i++) {
+      const x = sandPosition.getX(i), y = sandPosition.getY(i);
+      sandPosition.setZ(i, Math.sin(x * .55) * .16 + Math.cos(y * .9) * .12 + range(-.07, .07));
+    }
+    sandGeometry.computeVertexNormals();
+    const sand = new THREE.Mesh(sandGeometry, new THREE.MeshStandardMaterial({ color: 0x806e49, roughness: .98, metalness: 0 }));
+    sand.rotation.x = -Math.PI / 2;
+    sand.position.y = -3.05;
+    sand.receiveShadow = true;
+    scene.add(tag(sand, 'sand'));
+    const soilLip = new THREE.Mesh(new THREE.BoxGeometry(35, 1.4, 15), new THREE.MeshStandardMaterial({ color: 0x171913, roughness: 1 }));
+    soilLip.position.set(0, -3.85, .8);
+    scene.add(tag(soilLip, 'sand'));
+
+    const stoneMaterials = [0x475248, 0x354039, 0x596054].map(color => new THREE.MeshStandardMaterial({ color, roughness: .94, flatShading: true }));
+    function createRock(x, y, z, sx, sy, sz, tone = 0) {
+      const geometry = new THREE.IcosahedronGeometry(1, 2);
+      const p = geometry.attributes.position;
+      for (let i = 0; i < p.count; i++) {
+        const f = 1 + Math.sin(i * 17.17) * .065;
+        p.setXYZ(i, p.getX(i) * f, p.getY(i) * (1 + Math.cos(i * 8.3) * .045), p.getZ(i) * f);
+      }
+      geometry.computeVertexNormals();
+      const rock = new THREE.Mesh(geometry, stoneMaterials[tone % stoneMaterials.length]);
+      rock.position.set(x, y, z); rock.scale.set(sx, sy, sz);
+      rock.rotation.set(range(-.12, .12), range(-.7, .7), range(-.12, .12));
+      rock.castShadow = true; rock.receiveShadow = true;
+      scene.add(tag(rock, 'rock'));
+      return rock;
+    }
+    createRock(-8.7, -1.5, -1.6, 3.2, 1.6, 2.1, 1);
+    createRock(-6.0, -1.3, -2.6, 2.6, 1.8, 2.0, 0);
+    createRock(-2.0, -2.1, .3, 2.7, 1.1, 1.7, 2);
+    createRock(3.5, -1.8, -1.2, 3.1, 1.4, 1.8, 1);
+    createRock(7.6, -1.0, -2.0, 4.5, 1.8, 2.2, 0);
+    createRock(9.7, .2, -3.2, 3.2, 1.1, 1.6, 2);
+
+    const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x33241b, roughness: .93 });
+    function branch(points, radius) {
+      const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p)));
+      const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, 30, radius, 7, false), woodMaterial);
+      mesh.castShadow = true;
+      scene.add(tag(mesh, 'wood'));
+    }
+    branch([[-8.2,-2,-1],[-8,1,-1.5],[-7.3,4,-2],[-6.8,7,-3]], .62);
+    branch([[-7.8,1,-1.4],[-5.2,3,-2.0],[-1.4,5.1,-3.3],[3.0,6.4,-4.2]], .34);
+    branch([[-7.2,3.4,-2],[-9.4,5.2,-3.1],[-11.1,6.7,-3.5]], .22);
+    branch([[-3.4,4.3,-2.7],[-2.3,6.8,-3.6],[-.5,8.2,-4.6]], .19);
+    branch([[.5,5.4,-3.8],[3.9,7.2,-4.2],[7.7,7.7,-4.8]], .16);
+
+    const plants = [];
+    const plantPalette = {
+      green: [0x2b8b53, 0x4eab57, 0x74b95c, 0x1f7651],
+      red: [0x9a3545, 0xbf4d58, 0x703342, 0xd26c62]
+    };
+    function createBlade(x, z, height, width, color, phase, lean = 0) {
+      const segments = 7;
+      const vertices = [], indices = [];
+      for (let level = 0; level <= segments; level++) {
+        const t = level / segments;
+        const halfWidth = width * .5 * Math.pow(1 - t, .58) + .006;
+        vertices.push(-halfWidth, height * t, 0, halfWidth, height * t, 0);
+        if (level < segments) {
+          const n = level * 2;
+          indices.push(n, n + 1, n + 2, n + 1, n + 3, n + 2);
+        }
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      geometry.setIndex(indices); geometry.computeVertexNormals();
+      const base = Float32Array.from(geometry.attributes.position.array);
+      const material = new THREE.MeshStandardMaterial({ color, roughness: .75, side: THREE.DoubleSide, transparent: true, opacity: .94 });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(x, -2.92, z);
+      mesh.rotation.y = range(-Math.PI, Math.PI);
+      mesh.castShadow = true;
+      mesh.userData = { base, phase, height, lean };
+      plants.push(mesh);
+      scene.add(tag(mesh, 'plant'));
+    }
+    function plantCluster(cx, cz, count, hMin, hMax, palette, radius, lean = 0) {
+      for (let i = 0; i < count; i++) {
+        const a = random() * Math.PI * 2, r = Math.sqrt(random()) * radius;
+        createBlade(cx + Math.cos(a) * r, cz + Math.sin(a) * r, range(hMin,hMax), range(.18,.42), palette[Math.floor(random()*palette.length)], random()*12, lean);
+      }
+    }
+    plantCluster(-10.8, -1.4, 25, 2.0, 5.4, plantPalette.green, 2.9, .12);
+    plantCluster(-5.0, -3.2, 18, 1.8, 4.0, plantPalette.green, 2.5, -.08);
+    plantCluster(-1.5, .2, 19, .7, 2.0, plantPalette.green, 3.0, .06);
+    plantCluster(4.6, -3.2, 15, 1.4, 3.5, plantPalette.green, 2.4, -.1);
+    plantCluster(10.7, -2.2, 28, 2.2, 6.0, plantPalette.red, 3.0, -.06);
+    plantCluster(7.0, .2, 13, .8, 2.1, plantPalette.green, 2.2, .1);
+
+    function updatePlants(time) {
+      for (const mesh of plants) {
+        const pos = mesh.geometry.attributes.position;
+        const { base, phase, height, lean } = mesh.userData;
+        for (let i = 0; i < pos.count; i++) {
+          const j = i * 3, y = base[j + 1], t = Math.max(0, y / height);
+          const bend = Math.sin(time * 1.05 + phase + t * 1.8) * .22 * t * t + lean * t;
+          pos.setXYZ(i, base[j] + bend, y, base[j + 2] + Math.cos(time*.72 + phase) * .055 * t);
+        }
+        pos.needsUpdate = true;
+      }
+    }
+
+    // Four visually distinct species with animated tails and paired fins.
+    const speciesDefs = [
+      { id:'cardinal', name:'카디널테트라', count:14, size:.42, body:0x2879a5, accent:0xe8423c, depth:-.2, speed:[.48,.78] },
+      { id:'rummy', name:'러미노즈테트라', count:10, size:.46, body:0xd9d7c0, accent:0xdd3e35, depth:-1.0, speed:[.42,.7] },
+      { id:'angel', name:'엔젤피시', count:4, size:.74, body:0xe4d0a6, accent:0x262928, depth:-2.2, speed:[.22,.38] },
+      { id:'ember', name:'엠버테트라', count:12, size:.36, body:0xe27035, accent:0xffb35b, depth:1.0, speed:[.52,.84] }
+    ];
+    const fish = [];
+    const triangle = (a,b,c) => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute([...a,...b,...c], 3));
+      g.computeVertexNormals();
+      return g;
+    };
+    function fishModel(def, index) {
+      const group = new THREE.Group();
+      const bodyMat = new THREE.MeshStandardMaterial({ color:def.body, roughness:.42, metalness:.08 });
+      const accentMat = new THREE.MeshStandardMaterial({ color:def.accent, roughness:.5, side:THREE.DoubleSide });
+      const finMat = accentMat.clone(); finMat.transparent = true; finMat.opacity = .78;
+      const body = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 9), bodyMat);
+      body.scale.set(1.55, def.id === 'angel' ? 1.28 : .64, def.id === 'angel' ? .28 : .42);
+      body.castShadow = true; group.add(body);
+      const tail = new THREE.Mesh(triangle([-.95,0,0],[-2.0,.78,0],[-2.0,-.78,0]), finMat);
+      tail.position.x = -.45; group.add(tail);
+      const topFin = new THREE.Mesh(triangle([-.3,.35,0],[.3,.35,0],[-.25,1.0,0]), finMat);
+      topFin.position.y = .18; group.add(topFin);
+      const sideFinL = new THREE.Mesh(triangle([0,0,.35],[-.45,-.2,.8],[.5,-.16,.38]), finMat);
+      const sideFinR = sideFinL.clone(); sideFinR.scale.z = -1;
+      group.add(sideFinL, sideFinR);
+      if (def.id === 'cardinal') {
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.85,.12,.88), new THREE.MeshBasicMaterial({color:0x74dcef}));
+        stripe.position.set(.15,.15,0); group.add(stripe);
+      } else if (def.id === 'rummy') {
+        const nose = new THREE.Mesh(new THREE.SphereGeometry(.42,10,7), accentMat); nose.position.x=1.22; nose.scale.set(1,.72,.8); group.add(nose);
+        for (const y of [-.35,0,.35]) { const band = new THREE.Mesh(new THREE.BoxGeometry(.16,.11,.05), new THREE.MeshBasicMaterial({color:0x161b1a})); band.position.set(-1.55,y,.02); group.add(band); }
+      } else if (def.id === 'angel') {
+        body.scale.set(1.05,1.36,.24);
+        for (const x of [-.55,.15,.65]) { const band = new THREE.Mesh(new THREE.BoxGeometry(.13,1.72,.5), accentMat); band.position.x=x; group.add(band); }
+        topFin.scale.set(1.4,1.8,1); tail.scale.set(.9,1.3,1);
+      }
+      const eyeMat = new THREE.MeshBasicMaterial({color:0x050606});
+      for (const z of [-1,1]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(.09,8,6), eyeMat);
+        eye.position.set(1.13,.2,z*.39); group.add(eye);
+      }
+      group.scale.setScalar(def.size);
+      group.position.set(range(-10,10),range(-.4,4.2),range(-3.2,3.2)+def.depth*.2);
+      group.userData = {
+        def, index, tail, topFin, sideFinL, sideFinR,
+        velocity:new THREE.Vector3(range(def.speed[0],def.speed[1]),range(-.08,.08),range(-.14,.14)),
+        phase:random()*Math.PI*2, cruise:range(def.speed[0],def.speed[1])
+      };
+      scene.add(tag(group,'fish')); fish.push(group);
+    }
+    speciesDefs.forEach(def => { for(let i=0;i<def.count;i++) fishModel(def,i); });
+
+    const bounds = { x:12.5, minY:-1.7, maxY:5.4, z:4.4 };
+    function updateFish(dt, time) {
+      const positions = fish.map(f => f.position.clone());
+      const velocities = fish.map(f => f.userData.velocity.clone());
+      for (let i=0; i<fish.length; i++) {
+        const f = fish[i], data=f.userData, p=f.position, v=data.velocity;
+        const cohesion=new THREE.Vector3(), alignment=new THREE.Vector3(), separation=new THREE.Vector3();
+        let neighbors=0;
+        for (let j=0;j<fish.length;j++) {
+          if (i===j || fish[j].userData.def.id!==data.def.id) continue;
+          const distSq=p.distanceToSquared(positions[j]);
+          if (distSq<10) { cohesion.add(positions[j]); alignment.add(velocities[j]); neighbors++; }
+          if (distSq<1.15 && distSq>.0001) separation.add(p.clone().sub(positions[j]).divideScalar(distSq));
+        }
+        if (neighbors) {
+          cohesion.divideScalar(neighbors).sub(p).multiplyScalar(.055);
+          alignment.divideScalar(neighbors).sub(v).multiplyScalar(.08);
+          v.addScaledVector(cohesion,dt).addScaledVector(alignment,dt);
+        }
+        v.addScaledVector(separation,.12*dt);
+        v.y += Math.sin(time*.43+data.phase)*.006;
+        v.z += Math.cos(time*.31+data.phase*1.7)*.005;
+        if (Math.abs(p.x)>bounds.x) v.x += -Math.sign(p.x)*1.15*dt;
+        if (p.y<bounds.minY) v.y += 1.0*dt;
+        if (p.y>bounds.maxY) v.y -= 1.0*dt;
+        if (Math.abs(p.z)>bounds.z) v.z += -Math.sign(p.z)*.9*dt;
+        const rockAvoid = new THREE.Vector3(p.x/8, (p.y+2)/2.4, p.z/3);
+        if (p.y<-.65 && Math.abs(p.x)<10.5) v.y += .17*dt*(1-Math.min(1,rockAvoid.y));
+        const targetSpeed=data.cruise;
+        const speed=Math.max(.001,v.length()); v.multiplyScalar(THREE.MathUtils.lerp(1,targetSpeed/speed,.025));
+        p.addScaledVector(v,dt*2.2);
+        f.rotation.y = -Math.atan2(v.z,v.x);
+        f.rotation.z = THREE.MathUtils.clamp(v.y * .32,-.25,.25);
+        const flap=Math.sin(time*9.2+data.phase);
+        data.tail.rotation.y=flap*.52; data.topFin.rotation.x=flap*.08;
+        data.sideFinL.rotation.y=.25+flap*.16; data.sideFinR.rotation.y=-.25-flap*.16;
+      }
+    }
+
+    const bubbles=[];
+    const bubbleMaterial=new THREE.MeshPhysicalMaterial({color:0xcdfdfa,transparent:true,opacity:.36,roughness:.05,transmission:.72,thickness:.1});
+    function resetBubble(b, initial=false) {
+      b.position.set(range(-11.5,11.5), initial?range(-2.4,6.8):-2.5, range(-3.8,2.8));
+      b.userData.speed=range(.35,.9); b.userData.phase=range(0,12);
+      const s=range(.045,.15); b.scale.setScalar(s);
+    }
+    for(let i=0;i<62;i++) {
+      const b=new THREE.Mesh(new THREE.SphereGeometry(1,8,6),bubbleMaterial);
+      resetBubble(b,true); bubbles.push(b); scene.add(tag(b,'bubble'));
+    }
+    function updateBubbles(dt,time) {
+      for(const b of bubbles) {
+        b.position.y+=b.userData.speed*dt*2;
+        b.position.x+=Math.sin(time*1.2+b.userData.phase)*.035*dt;
+        if(b.position.y>7.8) resetBubble(b);
+      }
+    }
+
+    // Water surface shimmer.
+    const surface=new THREE.Mesh(new THREE.PlaneGeometry(34,15),new THREE.MeshPhysicalMaterial({color:0x91e3d8,transparent:true,opacity:.08,roughness:.12,metalness:.05,side:THREE.DoubleSide}));
+    surface.rotation.x=Math.PI/2; surface.position.y=8.15; scene.add(surface);
+
+    const raycaster=new THREE.Raycaster();
+    const pointer=new THREE.Vector2();
+    let dragging=false, moved=false, lastX=0, lastY=0;
+    renderer.domElement.addEventListener('pointerdown',e=>{ dragging=true;moved=false;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId); });
+    renderer.domElement.addEventListener('pointermove',e=>{
+      if(!dragging)return;
+      const dx=e.clientX-lastX,dy=e.clientY-lastY;
+      if(Math.abs(dx)+Math.abs(dy)>3)moved=true;
+      state.cameraYaw-=dx*.0045; state.cameraPitch=THREE.MathUtils.clamp(state.cameraPitch-dy*.0035,-.18,.18);
+      lastX=e.clientX;lastY=e.clientY;
+    });
+    renderer.domElement.addEventListener('pointerup',e=>{
+      dragging=false;
+      if(moved)return;
+      const rect=renderer.domElement.getBoundingClientRect();
+      pointer.x=((e.clientX-rect.left)/rect.width)*2-1; pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;
+      raycaster.setFromCamera(pointer,camera);
+      const hit=raycaster.intersectObjects(clickable,false)[0];
+      if(hit?.object.userData.quoteCategory) showQuote(hit.object.userData.quoteCategory);
+    });
+    renderer.domElement.addEventListener('wheel',e=>{ e.preventDefault(); state.cameraDistance=THREE.MathUtils.clamp(state.cameraDistance+e.deltaY*.012,18,31); },{passive:false});
+
+    function updateCamera() {
+      const center=new THREE.Vector3(0,1.1,0);
+      camera.position.set(Math.sin(state.cameraYaw)*state.cameraDistance,5.1+Math.sin(state.cameraPitch)*state.cameraDistance,state.cameraDistance*Math.cos(state.cameraYaw));
+      camera.lookAt(center);
+    }
+    function applyLight() {
+      state.light=Number(lightInput.value)/100;
+      hemi.intensity=1.35*state.light; sun.intensity=3.2*state.light; aquaLight.intensity=18*state.light;
+      renderer.toneMappingExposure=.68+state.light*.43; waterUniforms.uLight.value=state.light;
+      lightValue.value=`${lightInput.value}%`; lightValue.textContent=`${lightInput.value}%`;
+      lightInput.setAttribute('aria-valuetext',`${lightInput.value} 퍼센트`);
+    }
+    lightInput.addEventListener('input',applyLight);
+
+    function setPaused(value) {
+      state.paused=value; pauseButton.setAttribute('aria-pressed',String(value));
+      pauseButton.innerHTML=value?'▶ <span>재생</span>':'Ⅱ <span>멈춤</span>';
+      statusEl.textContent=value?'시간이 잠시 멈췄습니다':'물고기 40 · 네 종 · 흐르는 시간';
+      a11yState.textContent=value?'수족관 애니메이션 일시정지':'수족관 애니메이션 재생';
+    }
+    pauseButton.addEventListener('click',()=>setPaused(!state.paused));
+    quoteButton.addEventListener('click',()=>{showQuote(quoteOrder[quoteIndex%quoteOrder.length]);quoteIndex++;});
+    document.querySelector('#quote-close').addEventListener('click',hideQuote);
+
+    function resetScene() {
+      seed=85619; state.simTime=0; state.cameraYaw=0; state.cameraPitch=0; state.cameraDistance=24.5;
+      lightInput.value='92'; applyLight(); setPaused(false); hideQuote();
+      fish.forEach((f,i)=>{
+        const def=f.userData.def;
+        f.position.set(range(-10,10),range(-.4,4.2),range(-3.2,3.2)+def.depth*.2);
+        f.userData.velocity.set(range(def.speed[0],def.speed[1]),range(-.08,.08),range(-.14,.14));
+        f.userData.phase=random()*Math.PI*2;
+      });
+      bubbles.forEach(b=>resetBubble(b,true)); updateCamera(); render();
+      a11yState.textContent='수족관이 초기 상태로 돌아왔습니다';
+    }
+    resetButton.addEventListener('click',resetScene);
+
+    async function toggleFullscreen() {
+      try {
+        if(!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen();
+      } catch { a11yState.textContent='이 브라우저에서는 전체화면을 사용할 수 없습니다'; }
+    }
+    fullButton.addEventListener('click',toggleFullscreen);
+    document.addEventListener('fullscreenchange',()=>{fullButton.setAttribute('aria-label',document.fullscreenElement?'전체화면 종료':'전체화면 전환');resize();});
+    document.addEventListener('keydown',e=>{
+      if(e.target.matches('input'))return;
+      const key=e.key.toLowerCase();
+      if(key==='f'){e.preventDefault();toggleFullscreen();}
+      else if(key==='r'){e.preventDefault();resetScene();}
+      else if(key==='p'||e.code==='Space'){e.preventDefault();setPaused(!state.paused);}
+      else if(key==='q'){e.preventDefault();showQuote(quoteOrder[quoteIndex%quoteOrder.length]);quoteIndex++;}
+      else if(e.key==='Escape'){
+        hideQuote();
+        if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+      }
+    });
+
+    function resize() {
+      camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+      renderer.setPixelRatio(Math.min(devicePixelRatio,1.8)); renderer.setSize(innerWidth,innerHeight);
+    }
+    addEventListener('resize',resize);
+
+    function update(dt) {
+      if(state.paused)return;
+      state.simTime+=dt;
+      updateFish(dt,state.simTime); updatePlants(state.simTime); updateBubbles(dt,state.simTime);
+      waterUniforms.uTime.value=state.simTime;
+      surface.material.opacity=.07+Math.sin(state.simTime*.7)*.012;
+    }
+    function render() { updateCamera(); renderer.render(scene,camera); }
+    let previous=performance.now();
+    function loop(now) {
+      requestAnimationFrame(loop);
+      const dt=Math.min(.033,(now-previous)/1000); previous=now;
+      if(!state.manual) update(dt);
+      render();
+    }
+    requestAnimationFrame(loop);
+
+    window.advanceTime=(ms)=>{
+      state.manual=true;
+      const steps=Math.max(1,Math.round(ms/(1000/60)));
+      for(let i=0;i<steps;i++)update(1/60);
+      render();
+    };
+    window.render_game_to_text=()=>JSON.stringify({
+      coordinateSystem:'world coordinates: origin=center of tank; +x right, +y up, +z toward viewer',
+      mode:state.paused?'paused':'playing', simulationSeconds:Number(state.simTime.toFixed(2)),
+      lightingPercent:Math.round(state.light*100), fullscreen:Boolean(document.fullscreenElement),
+      camera:{yaw:Number(state.cameraYaw.toFixed(2)),pitch:Number(state.cameraPitch.toFixed(2)),distance:Number(state.cameraDistance.toFixed(1))},
+      fish:{total:fish.length,species:Object.fromEntries(speciesDefs.map(d=>[d.name,d.count])),sample:fish.slice(0,8).map(f=>({species:f.userData.def.name,x:Number(f.position.x.toFixed(1)),y:Number(f.position.y.toFixed(1)),z:Number(f.position.z.toFixed(1))}))},
+      scene:{plants:plants.length,bubbles:bubbles.length,rocks:6,driftwoodBranches:5},
+      quote:state.quoteCategory?{category:categoryNames[state.quoteCategory],text:state.quoteText}:null,
+      controls:['click/tap object: quote','drag: orbit','wheel: zoom','Space/P: pause','R: reset','Q: quote','F: fullscreen','Esc: close/exit']
+    });
+
+    applyLight(); updatePlants(0); updateCamera(); render();
+    setTimeout(()=>loading.classList.add('done'),260);
+  </script>
+</body>
+</html>
