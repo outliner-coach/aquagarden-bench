@@ -721,7 +721,8 @@ const kb = n => n >= 1024*1024 ? (n/1024/1024).toFixed(1) + " MB"
                                : n + " B";
 const ko = d => d.slice(0,4) + "." + d.slice(5,7) + "." + d.slice(8,10);
 
-VERSIONS.forEach((v, i) => {
+/* newest first; the 01…NN numbers stay tied to build order */
+VERSIONS.map((v, i) => [v, i]).reverse().forEach(([v, i]) => {
   const b = document.createElement("button");
   b.className = "card";
   b.type = "button";
