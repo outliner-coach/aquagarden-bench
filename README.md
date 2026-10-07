@@ -1,6 +1,6 @@
 # AquaGarden Bench
 
-같은 핵심 요구사항을 서로 다른 AI 모델에게 주고 받은 **브라우저 전용 3D 수족관** 열네 개를,
+같은 핵심 요구사항을 서로 다른 AI 모델에게 주고 받은 **브라우저 전용 3D 수족관** 열여섯 개를,
 한 페이지에서 골라 실행하고 비교하는 갤러리입니다.
 
 **라이브**: https://outliner-coach.github.io/aquagarden-bench/
@@ -9,8 +9,8 @@
 
 ## 공통 요구사항
 
-열네 버전은 모두 같은 핵심 요구사항에서 출발했습니다.
-07·08을 제외한 열두 개는 공통 프롬프트와 사진을, 2026년 5월의 07·08은 별도 문장과 같은 두 번째 사진을 사용했습니다.
+열여섯 버전은 모두 같은 핵심 요구사항에서 출발했습니다.
+07·08을 제외한 열네 개는 공통 프롬프트와 사진을, 2026년 5월의 07·08은 별도 문장과 같은 두 번째 사진을 사용했습니다.
 다만 **제작 조건은 서로 다릅니다** — 아래 「제작 조건」 절을 먼저 봐주세요.
 갤러리의 **프롬프트** 탭에서 원문과 이미지를 나란히 볼 수 있고,
 원문 파일은 [prompt.md](https://github.com/outliner-coach/aquagarden_gemini_flash_3.5/blob/main/prompt.md) 에 있습니다.
@@ -46,13 +46,15 @@
 | 12 | GPT-6 Astra | OpenAI Codex · xhigh | 2026-09-05 | 47 KB · 546줄 | 0.170.0 | 이 저장소 |
 | 13 | GPT-5.6 Sol xhigh | OpenAI Codex | 2026-09-05 | 31 KB · 602줄 | 0.180.0 | 이 저장소 |
 | 14 | Gemini 3.8 Flash High | Antigravity | 2026-09-05 | 77 KB · 2,226줄 | 0.170.0 | 이 저장소 |
+| 15 | Claude Opus 5.5 | Claude Code 서브에이전트 | 2026-10-07 | 75 KB · 1,422줄 | 0.170.0 | 이 저장소 |
+| 16 | Claude Sonnet 5.5 | Claude Code 서브에이전트 | 2026-10-07 | 58 KB · 870줄 | 0.160.0 | 이 저장소 |
 
 01·06·09·10 은 원본 저장소에서, 03·04·05 는 사내 슬랙에 공유된 첨부 파일에서,
 07·08 은 `/Users/friends/ai`의 과거 테스트 폴더에서 **수정 없이 그대로** 가져왔습니다.
 02 는 `gh-pages` 빌드를 그대로 받아 자산 경로만 상대 경로로 고쳤습니다.
-11·12·13·14 는 이 저장소에서 처음 만들어졌습니다.
+11·12·13·14·15·16 은 이 저장소에서 처음 만들어졌습니다.
 
-02 를 뺀 열세 개는 HTML 파일 하나로 끝나고, 02 만 React 빌드라 번들이 함께 들어 있습니다.
+02 를 뺀 열다섯 개는 HTML 파일 하나로 끝나고, 02 만 React 빌드라 번들이 함께 들어 있습니다.
 
 제외한 것: `aquagarden-for-builder`(요청에 따라).
 
@@ -78,6 +80,8 @@ versions/claude-fable-5-1/index.html        11
 versions/Gpt 6 astra/index.html             12
 versions/gpt-5-6-sol-xhigh/index.html       13
 versions/gemini-3-8-flash-high/index.html   14
+versions/claude-opus-5-5/index.html         15
+versions/claude-sonnet-5-5/index.html       16
 ```
 
 갤러리는 선택한 버전 **하나만** iframe으로 불러옵니다.
@@ -113,7 +117,7 @@ python3 -m http.server 8790
 
 ## 제작 조건 — 같은 조건이 아닙니다
 
-**열네 개가 모두 같은 프롬프트 한 번으로 나온 것은 아닙니다.**
+**열여섯 개가 모두 같은 프롬프트 한 번으로 나온 것은 아닙니다.**
 한 번에 끝난 것과 몇 시간 고쳐가며 만든 것을 나란히 놓고 우열을 가릴 수는 없으니,
 아래를 전제로 나머지 표를 봐주세요.
 
@@ -133,6 +137,8 @@ python3 -m http.server 8790
 | 12 | GPT-6 Astra | 원 프롬프트 + 실행 검증 | 공통 원문·사진으로 구현하고 브라우저 검증 및 필요한 보정을 수행. 무수정 단일 응답 측정은 아님 |
 | 13 | GPT-5.6 Sol xhigh | 원 프롬프트 + 실행 검증 | 공통 원문·사진만 보고 독립 구현하고, 브라우저 검증에서 발견한 수초 형태와 전체화면 동작을 보정 |
 | 14 | Gemini 3.8 Flash High | 원 프롬프트 + 독립 구현 | 서브에이전트로 호출해 공통 원문·사진만 제공, 타 버전 코드 참조 없이 독립 구현 |
+| 15 | Claude Opus 5.5 | 원 프롬프트 + 실행 검증 | 서브에이전트로 호출해 공통 원문·사진만 제공, 타 버전 코드 참조 없이 구현. Playwright 로 스크린샷 대조·보정 |
+| 16 | Claude Sonnet 5.5 | 원 프롬프트 + 실행 검증 | 서브에이전트로 호출해 공통 원문·사진만 제공, 타 버전 코드 참조 없이 구현. Playwright 로 스크린샷 대조·보정 |
 
 특히 **02 는 순수 Gemini 3 결과물로 보기 어렵습니다.** 중간에 모델을 갈아탔습니다.
 
@@ -156,12 +162,14 @@ python3 -m http.server 8790
 | GPT-6 Astra | 5종 24마리 | 있음 | 있음 · 창작 문장 |
 | GPT-5.6 Sol xhigh | 4종 40마리 | 밝기 하나 | 있음 · 창작 문장 |
 | Gemini 3.8 Flash High | 3종 23마리 | 있음 | 있음 |
+| Claude Opus 5.5 | 5종 39마리 | 있음 | 있음 |
+| Claude Sonnet 5.5 | 5종 31마리 | 있음 | 있음 |
 
 - **GPT-5** — 파일 전체에 `<input>` 도 `<button>` 도 하나 없습니다. 조명 UI 자체를 만들지 않았습니다.
 - **Gemini 3 / Antigravity** — 씬 위 여섯 지점을 클릭해봤지만 DOM 이 전혀 변하지 않고,
   번들 어디에도 한국어 문자열이 없습니다. 명언 상태를 담을 스토어는 만들어놨지만 아무도 호출하지 않습니다.
 
-물고기 종 수는 열네 개 모두 통과했습니다.
+물고기 종 수는 열여섯 개 모두 통과했습니다.
 
 ## 알려진 특이사항
 
@@ -230,3 +238,22 @@ Gemini 3.8 Flash High를 서브에이전트로 호출해 공통 원문과 사진
 - 조명 프리셋 4종(주광·석양·달빛·심해) 및 실시간 밝기 조절, 오브젝트 클릭 명언 카드, Web Audio API 절차적 수중 사운드스케이프.
 - 바로 실행: https://outliner-coach.github.io/aquagarden-bench/#gemini-3-8-flash-high
 
+## 15번 버전에 대하여
+
+Claude Opus 5.5를 서브에이전트로 호출해 공통 원문과 사진만 제공해 만든 버전입니다.
+[제작·검증 기록](versions/claude-opus-5-5/README.md)과 [원프롬프트](versions/claude-opus-5-5/prompt.md)를 참고하세요.
+
+- Three.js 0.170.0, 단일 HTML, 외부 에셋 없음.
+- 5종 39마리(네온 테트라 18, 할리퀸 라스보라 10, 골든 플래티 6, 하프문 베타 1, 코리도라스 4).
+- 조명 프리셋 4종과 밝기·색온도·광원 방향·코스틱·빛줄기 슬라이더. 15개 분류 한국어 명언.
+- 바로 실행: https://outliner-coach.github.io/aquagarden-bench/#claude-opus-5-5
+
+## 16번 버전에 대하여
+
+Claude Sonnet 5.5를 서브에이전트로 호출해 공통 원문과 사진만 제공해 만든 버전입니다.
+[제작·검증 기록](versions/claude-sonnet-5-5/README.md)과 [원프롬프트](versions/claude-sonnet-5-5/prompt.md)를 참고하세요.
+
+- Three.js 0.160.0, 단일 HTML, 외부 에셋 없음.
+- 5종 31마리(붉은 베타 2, 네온 테트라 14, 라스보라 8, 엔젤피시 3, 코리도라스 4).
+- 조명 프리셋 3종과 슬라이더 6개. 8개 분류 한국어 명언 24개.
+- 바로 실행: https://outliner-coach.github.io/aquagarden-bench/#claude-sonnet-5-5
