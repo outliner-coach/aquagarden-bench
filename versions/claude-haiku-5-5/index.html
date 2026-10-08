@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>디지털 수족관</title>
+<style>
+:root{
+  --bg:#05161c;
+  --panel:rgba(6,30,38,.8);
+  --line:rgba(160,235,225,.22);
+  --fg:#e9f8f5;
+  --muted:#9fc9c3;
+  --accent:#7fe3d2;
+  --accent-2:#ffb35c;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);overflow:hidden;font-family:Pretendard,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",system-ui,sans-serif}
+#scene{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+#scene.hover{cursor:pointer}
+#scene.drag{cursor:grabbing}
+.hud{position:fixed;left:16px;top:16px;max-width:calc(100vw - 180px);pointer-events:none;z-index:1}
+.hud h1{margin:0;font-size:20px;font-weight:700;letter-spacing:.02em;text-shadow:0 1px 8px rgba(0,0,0,.7)}
+.hud p{margin:4px 0 0;font-size:13px;line-height:1.5;color:var(--muted);text-shadow:0 1px 6px rgba(0,0,0,.7)}
+button{font:inherit;color:var(--fg);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer;min-height:36px}
+button:hover{background:rgba(255,255,255,.14)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#toggle{position:fixed;right:16px;top:16px;z-index:3;background:var(--panel);backdrop-filter:blur(8px)}
+#panel{position:fixed;right:16px;top:64px;width:270px;z-index:2;background:var(--panel);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:12px;padding:14px 14px 10px;display:none}
+#panel.open{display:block}
+#panel h2{font-size:14px;margin:0 0 10px;color:var(--accent)}
+.presets{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.presets button[aria-pressed="true"]{border-color:var(--accent);background:rgba(127,227,210,.2)}
+.slider{display:grid;grid-template-columns:1fr auto;gap:4px 8px;margin:12px 0 0;font-size:13px}
+.slider output{color:var(--muted);font-variant-numeric:tabular-nums}
+.slider input{grid-column:1/3;width:100%;accent-color:var(--accent);margin:0}
+#quote{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);width:min(640px,calc(100vw - 32px));background:var(--panel);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:14px;padding:18px 20px;z-index:2;display:none}
+#quote.open{display:block}
+.q-tag{font-size:12px;color:var(--accent-2);letter-spacing:.04em}
+.q-text{margin:8px 0 6px;font-size:17px;line-height:1.65;word-break:keep-all}
+.q-author{margin:0;font-size:13px;color:var(--muted)}
+.q-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+@media (max-width:600px){
+  .hud{max-width:calc(100vw - 150px)}
+  .hud h1{font-size:17px}
+  #panel{left:16px;right:16px;width:auto;top:64px;max-height:55vh;overflow:auto}
+  #quote{bottom:12px;padding:14px 16px}
+  .q-text{font-size:15px}
+}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}
+</script>
+</head>
+<body>
+<canvas id="scene" aria-label="3D 수족관 장면"></canvas>
+
+<div class="hud">
+  <h1>디지털 수족관</h1>
+  <p>오브젝트나 물고기를 클릭하면 명언이 나옵니다. 화면을 드래그하면 시점이 움직입니다.</p>
+</div>
+
+<button id="toggle" aria-expanded="false" aria-controls="panel">조명 조절</button>
+
+<section id="panel" aria-label="조명 조절">
+  <h2>조명</h2>
+  <div class="presets" role="group" aria-label="조명 프리셋">
+    <button type="button" data-preset="day" aria-pressed="false">낮 햇살</button>
+    <button type="button" data-preset="sunset" aria-pressed="false">석양</button>
+    <button type="button" data-preset="night" aria-pressed="false">야간 달빛</button>
+    <button type="button" data-preset="dream" aria-pressed="false">몽환</button>
+  </div>
+  <label class="slider"><span>전체 밝기</span><output id="o-br"></output>
+    <input id="br" type="range" min="0.2" max="2" step="0.01"></label>
+  <label class="slider"><span>스포트라이트</span><output id="o-spot"></output>
+    <input id="spot" type="range" min="0" max="2.5" step="0.01"></label>
+  <label class="slider"><span>색온도</span><output id="o-temp"></output>
+    <input id="temp" type="range" min="2700" max="9000" step="100"></label>
+  <label class="slider"><span>수중 색감</span><output id="o-tint"></output>
+    <input id="tint" type="range" min="0" max="1" step="0.01"></label>
+</section>
+
+<section id="quote" aria-live="polite" hidden>
+  <div class="q-tag" id="q-tag"></div>
+  <p class="q-text" id="q-text"></p>
+  <p class="q-author" id="q-author"></p>
+  <div class="q-actions">
+    <button type="button" id="q-next">다른 명언</button>
+    <button type="button" id="q-close">닫기</button>
+  </div>
+</section>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ================= 공통 유틸 ================= */
+const $ = (s) => document.querySelector(s);
+const canvas = $('#scene');
+let seed = 20240607;                       // 배치는 매번 같도록 시드 난수 사용
+const srand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+const sr = (a, b) => a + srand() * (b - a);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+function angleLerp(a, b, t) {
+  const d = Math.atan2(Math.sin(b - a), Math.cos(b - a));
+  return a + d * t;
+}
+function hash3(x, y, z) {
+  const s = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+function vnoise(x, y, z) {                  // 값 노이즈 (-1..1)
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+  const fx = x - xi, fy = y - yi, fz = z - zi;
+  const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy), w = fz * fz * (3 - 2 * fz);
+  const c00 = lerp(hash3(xi, yi, zi), hash3(xi + 1, yi, zi), u);
+  const c10 = lerp(hash3(xi, yi + 1, zi), hash3(xi + 1, yi + 1, zi), u);
+  const c01 = lerp(hash3(xi, yi, zi + 1), hash3(xi + 1, yi, zi + 1), u);
+  const c11 = lerp(hash3(xi, yi + 1, zi + 1), hash3(xi + 1, yi + 1, zi + 1), u);
+  return lerp(lerp(c00, c10, v), lerp(c01, c11, v), w) * 2 - 1;
+}
+function kelvin(k) {                        // 색온도 -> sRGB (근사식)
+  const t = k / 100;
+  const r = t <= 66 ? 255 : 329.698727 * Math.pow(t - 60, -0.1332048);
+  const g = t <= 66 ? 99.470803 * Math.log(t) - 161.119568 : 288.122169 * Math.pow(t - 60, -0.0755149);
+  const b = t >= 66 ? 255 : (t <= 19 ? 0 : 138.517731 * Math.log(t - 10) - 305.044793);
+  const c = (v) => clamp(v, 0, 255) / 255;
+  return new THREE.Color().setRGB(c(r), c(g), c(b), THREE.SRGBColorSpace);
+}
+
+/* ================= 렌더러 / 장면 / 카메라 ================= */
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const WATER_DEEP = new THREE.Color('#041d26');
+const WATER_AQUA = new THREE.Color('#1f7f7c');
+scene.background = new THREE.Color('#06222b');
+scene.fog = new THREE.Fog(new THREE.Color('#06222b'), 14, 70);
+
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+const camTarget = new THREE.Vector3(0, 2.05, 0);
+let camYaw = 0, camPitch = 0;
+
+const pickables = [];                        // 클릭 가능한 오브젝트 목록
+const obstacles = [];                        // 물고기 회피용 대략적 구체
+const TIME = { value: 0 };                   // 수초 흔들림 시간 uniform
+
+/* ================= 수조 구조 ================= */
+// 바닥 높이 함수 (뒤쪽이 높고 앞쪽이 낮은 경사 + 완만한 요철)
+const subY = (x, z) => 0.04 + 0.38 * clamp((1.9 - z) / 3.8, 0, 1) + 0.07 * vnoise(x * 0.7 + 3, 0, z * 0.7);
+
+function makeSandTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#2b2620';
+  g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 4200; i++) {
+    const v = 30 + Math.random() * 60 | 0;
+    g.fillStyle = `rgba(${v + 20},${v + 14},${v},${0.35 + Math.random() * 0.5})`;
+    g.fillRect(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 2, 1 + Math.random() * 2);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(3, 2);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const substrate = (() => {
+  const g = new THREE.PlaneGeometry(8, 4, 96, 48).rotateX(-Math.PI / 2);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, subY(p.getX(i), p.getZ(i)));
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: makeSandTexture(), roughness: 1, metalness: 0 }));
+  m.receiveShadow = true;
+  scene.add(m);
+  return m;
+})();
+
+// 뒷벽: 흐린 그라데이션 + 안개 느낌의 밝은 얼룩
+const wallMat = (() => {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 256;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 256);
+  grd.addColorStop(0, '#ffffff');
+  grd.addColorStop(0.6, '#8a8a8a');
+  grd.addColorStop(1, '#3a3a3a');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 512, 256);
+  for (let i = 0; i < 14; i++) {
+    const x = Math.random() * 512, y = Math.random() * 180, r = 40 + Math.random() * 90;
+    const rg = g.createRadialGradient(x, y, 0, x, y, r);
+    rg.addColorStop(0, 'rgba(255,255,255,0.12)');
+    rg.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = rg;
+    g.fillRect(0, 0, 512, 256);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshBasicMaterial({ map: t, color: 0xffffff });
+})();
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(8.6, 4.9), wallMat);
+wall.position.set(0, 2.2, -2.08);
+scene.add(wall);
+
+// 수면 띠 (빛이 닿는 얇은 면)
+const surface = new THREE.Mesh(
+  new THREE.PlaneGeometry(8, 4).rotateX(-Math.PI / 2),
+  new THREE.MeshBasicMaterial({ color: '#bff3ff', transparent: true, opacity: 0.08, depthWrite: false })
+);
+surface.position.y = 4.4;
+scene.add(surface);
+
+// 유리 테두리와 앞유리 반사
+const frame = new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxGeometry(8, 4.4, 4)),
+  new THREE.LineBasicMaterial({ color: '#9fe8de', transparent: true, opacity: 0.3 })
+);
+frame.position.set(0, 2.2, 0);
+scene.add(frame);
+const glass = new THREE.Mesh(
+  new THREE.PlaneGeometry(8, 4.4),
+  new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.035, depthWrite: false })
+);
+glass.position.set(0, 2.2, 2.0);
+scene.add(glass);
+
+/* ================= 바위 ================= */
+const rockMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
+const SPHERE = new THREE.SphereGeometry(1, 36, 24);
+
+function makeRock(x, z, sx, sy, sz, off, yOff = 0) {
+  const g = new THREE.SphereGeometry(1, 36, 24);
+  const p = g.attributes.position;
+  const n = p.count;
+  const pos = new Float32Array(n * 3);
+  let minY = Infinity, maxY = -Infinity;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < n; i++) {
+    v.fromBufferAttribute(p, i);
+    const d = vnoise(v.x * 1.5 + off, v.y * 1.5, v.z * 1.5) * 0.26 + vnoise(v.x * 4.2 + off, v.y * 4.2, v.z * 4.2) * 0.07;
+    const r = 1 + d;
+    let y = v.y * r;
+    if (y < -0.7) y = -0.7 + (y + 0.7) * 0.15;   // 아래쪽을 납작하게
+    pos[i * 3] = v.x * r * sx;
+    pos[i * 3 + 1] = y * sy;
+    pos[i * 3 + 2] = v.z * r * sz;
+    minY = Math.min(minY, pos[i * 3 + 1]);
+    maxY = Math.max(maxY, pos[i * 3 + 1]);
+  }
+  const base = new THREE.Color('#4a524d'), light = new THREE.Color('#8f958c'), moss = new THREE.Color('#5d7d3b');
+  const cols = new Float32Array(n * 3);
+  const c = new THREE.Color();
+  for (let i = 0; i < n; i++) {
+    pos[i * 3 + 1] -= minY;
+    const hh = (pos[i * 3 + 1]) / (maxY - minY);
+    c.copy(base).lerp(light, clamp(hh, 0, 1) * 0.7);
+    const mn = vnoise(pos[i * 3] * 2 + off, pos[i * 3 + 1] * 2, pos[i * 3 + 2] * 2);
+    if (mn > 0.18 && hh > 0.5) c.lerp(moss, 0.55);      // 이끼 얼룩
+    cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
+  }
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, rockMat);
+  const y0 = subY(x, z) + yOff;
+  m.position.set(x, y0, z);
+  m.castShadow = m.receiveShadow = true;
+  m.userData.quoteKey = 'rock';
+  pickables.push(m);
+  scene.add(m);
+  obstacles.push({ x, y: y0 + (maxY - minY) * 0.5, z, r: Math.max(sx, sz) * 0.95 });
+  return m;
+}
+// 왼쪽 큰 바위 군
+makeRock(-2.7, -0.25, 1.5, 1.2, 1.25, 1.3);
+makeRock(-3.55, 0.7, 0.8, 0.5, 0.75, 4.1);
+makeRock(-1.5, -0.95, 0.75, 0.55, 0.65, 7.7);
+makeRock(-2.15, 0.95, 0.5, 0.32, 0.45, 9.1);
+// 오른쪽 층상 바위
+makeRock(2.5, 0.2, 1.55, 0.5, 1.1, 11.3);
+makeRock(2.2, 0.1, 1.15, 0.42, 0.9, 12.6, 0.36);
+makeRock(2.9, -0.35, 0.9, 0.33, 0.7, 14.2, 0.1);
+makeRock(3.35, 0.75, 0.55, 0.3, 0.5, 15.0);
+// 작은 자갈
+for (let i = 0; i < 14; i++) {
+  const x = sr(-3.8, 3.8), z = sr(-1.5, 1.6);
+  if (Math.abs(x + 2.7) < 1.8 && Math.abs(z + 0.25) < 1.2) continue;
+  makeRock(x, z, sr(0.1, 0.2), sr(0.06, 0.12), sr(0.1, 0.2), i * 3.1 + 20, 0);
+}
+
+/* ================= 유목 ================= */
+const woodMat = new THREE.MeshStandardMaterial({ color: '#6f5b47', roughness: 0.92, metalness: 0 });
+function makeWood(points, r0, r1, bumpSeed) {
+  const curve = new THREE.CatmullRomCurve3(points.map((q) => new THREE.Vector3(q[0], q[1], q[2])));
+  const tub = 80, rad = 12;
+  const g = new THREE.TubeGeometry(curve, tub, r0, rad, false);
+  const p = g.attributes.position;
+  const c = new THREE.Vector3(), v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    const ring = Math.floor(i / (rad + 1));
+    const t = ring / tub;
+    curve.getPointAt(t, c);
+    v.fromBufferAttribute(p, i).sub(c);
+    const bump = 1 + 0.2 * vnoise(c.x * 3 + bumpSeed, c.y * 3, c.z * 3);
+    v.multiplyScalar((lerp(r0, r1, t) * bump) / r0);
+    p.setXYZ(i, c.x + v.x, c.y + v.y, c.z + v.z);
+  }
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, woodMat);
+  m.castShadow = m.receiveShadow = true;
+  m.userData.quoteKey = 'wood';
+  pickables.push(m);
+  scene.add(m);
+  for (let i = 0; i <= 4; i++) {
+    const q = curve.getPointAt(i / 4);
+    obstacles.push({ x: q.x, y: q.y, z: q.z, r: r0 * 2.2 });
+  }
+  return m;
+}
+makeWood([[-3.95, 3.45, -0.85], [-3.25, 2.6, -0.62], [-2.6, 1.75, -0.4], [-2.4, 1.3, -0.25]], 0.13, 0.07, 2.1);
+makeWood([[-3.1, 2.45, -0.55], [-2.2, 2.75, -0.8], [-1.2, 2.3, -1.05], [-0.7, 2.0, -1.1]], 0.1, 0.045, 5.3);
+makeWood([[-2.75, 1.85, -0.35], [-2.0, 1.25, 0.05], [-1.5, 0.8, 0.45], [-1.25, 0.35, 0.6]], 0.09, 0.04, 8.7);
+
+/* ================= 수초 / 이끼 (하나의 흔들림 셰이더 공유) ================= */
+function swayMaterial(amp) {
+  const m = new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.55, metalness: 0 });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uTime = TIME;
+    sh.uniforms.uAmp = { value: amp };
+    sh.vertexShader = 'attribute float aSway;\nattribute float aPhase;\nuniform float uTime;\nuniform float uAmp;\n' +
+      sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      float swayW = aSway * aSway;
+      float wv = sin(uTime * 1.3 + aPhase) + 0.45 * sin(uTime * 2.7 + aPhase * 1.9 + position.y * 3.0);
+      transformed.x += wv * uAmp * swayW;
+      transformed.z += cos(uTime * 1.1 + aPhase * 0.7) * uAmp * 0.6 * swayW;
+      `);
+  };
+  return m;
+}
+const newAcc = () => ({ pos: [], col: [], ph: [], sw: [] });
+function addTri(A, a, b, c, col, ctx) {
+  for (const v of [a, b, c]) {
+    A.pos.push(v.x, v.y, v.z);
+    A.col.push(col.r, col.g, col.b);
+    A.ph.push(ctx.ph);
+    A.sw.push(clamp((v.y - ctx.base) / ctx.H, 0, 1));
+  }
+}
+function buildGeo(A) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(A.pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(A.col, 3));
+  g.setAttribute('aPhase', new THREE.Float32BufferAttribute(A.ph, 1));
+  g.setAttribute('aSway', new THREE.Float32BufferAttribute(A.sw, 1));
+  g.computeVertexNormals();
+  return g;
+}
+function leaf(A, node, dir, L, W, col, ctx) {
+  const up = new THREE.Vector3(0, 1, 0);
+  const side = new THREE.Vector3().crossVectors(dir, up).normalize().multiplyScalar(W);
+  const tip = node.clone().addScaledVector(dir, L);
+  const a = node.clone().add(side), b = node.clone().sub(side);
+  const c = tip.clone().add(side.clone().multiplyScalar(0.25)), d = tip.clone().sub(side.clone().multiplyScalar(0.25));
+  addTri(A, a, b, c, col, ctx);
+  addTri(A, b, d, c, col, ctx);
+}
+function stemPlant(A, cx, cz, H, n, palA, palB) {
+  const base = subY(cx, cz);
+  for (let s = 0; s < n; s++) {
+    const ctx = { H, base, ph: sr(0, Math.PI * 2) };
+    const ang = sr(0, Math.PI * 2);
+    const lean = sr(0.05, 0.3) * H;
+    const hgt = H * sr(0.55, 1.0);
+    const bx = cx + sr(-0.15, 0.15), bz = cz + sr(-0.15, 0.15);
+    const nodes = 7;
+    for (let k = 1; k <= nodes; k++) {
+      const t = k / nodes;
+      const node = new THREE.Vector3(bx + Math.cos(ang) * lean * t * t, base + hgt * t, bz + Math.sin(ang) * lean * t * t);
+      for (const sgn of [-1, 1]) {
+        const e = sr(0.15, 0.75);
+        const dA = ang + sgn * sr(0.9, 1.6);
+        const dir = new THREE.Vector3(Math.cos(dA) * Math.cos(e), Math.sin(e), Math.sin(dA) * Math.cos(e));
+        const L = (0.12 + H * 0.07) * sr(0.8, 1.2) * (1.1 - t * 0.4);
+        const col = new THREE.Color().lerpColors(palA, palB, srand());
+        leaf(A, node, dir, L, L * 0.42, col, ctx);
+      }
+    }
+  }
+}
+function carpet(A, count) {
+  const pal = ['#2d6b30', '#5d9c4a', '#245a2c', '#7aa856', '#3f7d3c'].map((h) => new THREE.Color(h));
+  for (let i = 0; i < count; i++) {
+    const x = sr(-3.95, 3.95), z = sr(-1.9, 1.9);
+    const b = subY(x, z);
+    const h = sr(0.04, 0.13);
+    const ctx = { H: 0.13, base: b, ph: sr(0, Math.PI * 2) };
+    const th = sr(0, Math.PI * 2);
+    const sx = Math.cos(th) * 0.012, sz = Math.sin(th) * 0.012;
+    const lx = sr(-0.04, 0.04), lz = sr(-0.04, 0.04);
+    const col = pal[(srand() * pal.length) | 0].clone().multiplyScalar(sr(0.75, 1.08));
+    addTri(A, new THREE.Vector3(x - sx, b, z - sz), new THREE.Vector3(x + sx, b, z + sz),
+      new THREE.Vector3(x + lx, b + h, z + lz), col, ctx);
+  }
+}
+const plantA = newAcc();
+const PLANTS = [
+  [-3.7, -1.05, 2.6, 34, '#2a6e35', '#6bb85e'],
+  [-3.1, 0.7, 1.9, 26, '#2f8a3c', '#9fd45a'],
+  [-0.6, -1.25, 2.4, 40, '#22613a', '#4fa046'],
+  [0.9, 0.85, 1.1, 22, '#6fb24f', '#c9e27f'],
+  [3.1, -1.0, 2.1, 32, '#8a2630', '#c94a3d'],   // 붉은 수초
+  [3.7, 0.7, 1.5, 24, '#6e1f2b', '#d04e40'],
+  [1.6, -0.5, 1.4, 24, '#2a7a4f', '#94c862'],
+  [-1.9, 1.25, 0.9, 16, '#3f8a38', '#93cc6a'],
+];
+for (const [x, z, H, n, a, b] of PLANTS) stemPlant(plantA, x, z, H, n, new THREE.Color(a), new THREE.Color(b));
+const plantMesh = new THREE.Mesh(buildGeo(plantA), swayMaterial(0.12));
+plantMesh.userData.quoteKey = 'plant';
+plantMesh.castShadow = false;
+plantMesh.receiveShadow = true;
+scene.add(plantMesh);
+pickables.push(plantMesh);
+
+const mossA = newAcc();
+carpet(mossA, 9000);
+const mossMesh = new THREE.Mesh(buildGeo(mossA), swayMaterial(0.02));
+mossMesh.userData.quoteKey = 'moss';
+scene.add(mossMesh);
+pickables.push(mossMesh);
+
+/* ================= 기포 ================= */
+const BUB_N = 140;
+const bubMat = new THREE.MeshStandardMaterial({ color: '#e8fbff', transparent: true, opacity: 0.32, roughness: 0.08, metalness: 0.1, emissive: '#8fdcff', emissiveIntensity: 0.35, depthWrite: false });
+const bubbles = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), bubMat, BUB_N);
+bubbles.userData.quoteKey = 'bubble';
+scene.add(bubbles);
+pickables.push(bubbles);
+const AIR_SOURCES = [[-0.25, 0.95], [-3.1, 0.55], [-3.8, -0.8], [1.5, -0.45], [3.0, -0.9], [3.7, 0.7], [0.9, 0.8]];
+const bub = [];
+function respawnBubble(b, init) {
+  const src = AIR_SOURCES[(srand() * AIR_SOURCES.length) | 0];
+  b.sx = src[0] + sr(-0.05, 0.05);
+  b.sz = src[1] + sr(-0.05, 0.05);
+  b.y0 = subY(b.sx, b.sz) + 0.03;
+  b.y = init ? sr(b.y0, 4.2) : b.y0;
+  b.sp = sr(0.35, 0.7);
+  b.r = sr(0.018, 0.05);
+  b.ph = sr(0, Math.PI * 2);
+}
+for (let i = 0; i < BUB_N; i++) {
+  const b = {};
+  respawnBubble(b, true);
+  bub.push(b);
+}
+const dummy = new THREE.Object3D();
+function updateBubbles(dt, t) {
+  for (let i = 0; i < BUB_N; i++) {
+    const b = bub[i];
+    b.y += b.sp * dt;
+    if (b.y > 4.3) respawnBubble(b, false);
+    const rise = clamp((b.y - b.y0) / 4, 0, 1);
+    dummy.position.set(
+      b.sx + Math.sin(t * 1.6 + b.ph) * 0.05 * (0.3 + rise) + Math.sin(t * 0.7 + b.ph * 2) * 0.02,
+      b.y,
+      b.sz + Math.cos(t * 1.3 + b.ph) * 0.03
+    );
+    dummy.scale.setScalar(b.r * (1 + 0.6 * rise));
+    dummy.updateMatrix();
+    bubbles.setMatrixAt(i, dummy.matrix);
+  }
+  bubbles.instanceMatrix.needsUpdate = true;
+}
+
+/* ================= 물고기 ================= */
+const SPECIES = [
+  { name: '네온테트라', count: 16, len: 0.34, h: 0.15, w: 0.12, body: '#b9d8ee', fin: '#e4f6ff', speed: [0.8, 1.1], dorsal: 0.05,
+    stripes: [{ c: '#1d6bff', y: 0.2, lf: 0.92, hf: 0.13 }, { c: '#ff2d3c', y: -0.12, lf: 0.7, hf: 0.12 }] },
+  { name: '금붕어', count: 5, len: 0.56, h: 0.3, w: 0.24, body: '#ffa33a', fin: '#ffd08a', speed: [0.45, 0.6], dorsal: 0.1 },
+  { name: '앤젤피시', count: 4, len: 0.42, h: 0.5, w: 0.1, body: '#e9e0c2', fin: '#f5ecd0', speed: [0.35, 0.5], dorsal: 0.32, bands: [0.12, -0.2] },
+  { name: '레드 비단잉', count: 3, len: 0.58, h: 0.3, w: 0.25, body: '#e2352b', fin: '#f6d9d2', speed: [0.4, 0.55], dorsal: 0.08,
+    spots: [[0.1, 0.05, 0.24, 0.16], [-0.22, 0.1, 0.22, 0.12]] },
+];
+const BOUNDS = { x0: -3.6, x1: 3.6, y0: 0.9, y1: 3.9, z0: -1.3, z1: 1.3 };
+const FISH = [];
+const fishMeshes = [];
+
+function buildFish(sp) {
+  const root = new THREE.Group();
+  root.rotation.order = 'YZX';
+  const body = new THREE.Group();
+  root.add(body);
+  const track = (m) => { m.userData.quoteKey = 'fish'; m.userData.species = sp.name; fishMeshes.push(m); return m; };
+  const bodyMat = new THREE.MeshStandardMaterial({ color: sp.body, roughness: 0.35, metalness: 0.05 });
+  const finMat = new THREE.MeshStandardMaterial({ color: sp.fin, roughness: 0.5, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false });
+  const L = sp.len, H = sp.h, W = sp.w;
+
+  const bm = track(new THREE.Mesh(SPHERE, bodyMat));
+  bm.scale.set(L, H, W);
+  bm.castShadow = true;
+  body.add(bm);
+  for (const s of sp.stripes || []) {
+    const m = track(new THREE.Mesh(SPHERE, new THREE.MeshStandardMaterial({ color: s.c, emissive: s.c, emissiveIntensity: 0.15, roughness: 0.4 })));
+    m.scale.set(L * s.lf, H * s.hf, W * 1.04);
+    m.position.y = H * s.y;
+    body.add(m);
+  }
+  for (const x of sp.bands || []) {
+    const m = track(new THREE.Mesh(SPHERE, new THREE.MeshStandardMaterial({ color: '#241c14', roughness: 0.6 })));
+    m.scale.set(L * 0.07, H * 0.97, W * 1.05);
+    m.position.x = L * x;
+    body.add(m);
+  }
+  for (const [xf, yf, lf, hf] of sp.spots || []) {
+    const m = track(new THREE.Mesh(SPHERE, new THREE.MeshStandardMaterial({ color: '#f7f4ee', roughness: 0.35 })));
+    m.scale.set(L * lf, H * hf, W * 1.05);
+    m.position.set(L * xf, H * yf, 0);
+    body.add(m);
+  }
+
+  // 꼬리: 피벗을 몸 뒤쪽에 두고 좌우로 흔든다
+  const tail = new THREE.Group();
+  tail.position.x = -L * 0.95;
+  body.add(tail);
+  const ts = new THREE.Shape();
+  ts.moveTo(0, 0);
+  ts.quadraticCurveTo(-0.2 * L, 0.5 * H, -0.45 * L, 0.95 * H);
+  ts.quadraticCurveTo(-0.3 * L, 0, -0.45 * L, -0.95 * H);
+  ts.quadraticCurveTo(-0.2 * L, -0.5 * H, 0, 0);
+  tail.add(track(new THREE.Mesh(new THREE.ShapeGeometry(ts, 8), finMat)));
+
+  // 등지느러미
+  const ds = new THREE.Shape();
+  ds.moveTo(0.35 * L, 0.7 * H);
+  ds.quadraticCurveTo(-0.15 * L, 0.7 * H + sp.dorsal * 1.8, -0.5 * L, 0.45 * H);
+  ds.lineTo(-0.1 * L, 0.6 * H);
+  ds.closePath();
+  body.add(track(new THREE.Mesh(new THREE.ShapeGeometry(ds, 6), finMat)));
+
+  // 가슴지느러미: 좌우 한 쌍, 펄럭임 애니메이션 대상
+  const pecs = [];
+  for (const side of [-1, 1]) {
+    const ps = new THREE.Shape();
+    ps.absellipse(0, 0, 0.18 * L, 0.3 * H, 0, Math.PI * 2, false, 0);
+    const pm = track(new THREE.Mesh(new THREE.ShapeGeometry(ps, 10), finMat));
+    pm.position.set(0.25 * L, -0.12 * H, side * 0.85 * W);
+    pm.rotation.x = side * Math.PI / 2;
+    body.add(pm);
+    pecs.push(pm);
+  }
+
+  // 눈
+  const eyeMat = new THREE.MeshStandardMaterial({ color: '#0a0a0c', roughness: 0.2 });
+  for (const side of [-1, 1]) {
+    const e = new THREE.Mesh(SPHERE, eyeMat);
+    e.scale.setScalar(Math.min(H, W) * 0.2);
+    e.position.set(0.6 * L, 0.12 * H, side * W * 0.95);
+    body.add(e);
+  }
+  root.scale.setScalar(0.62);
+  return { root, body, tail, pecs };
+}
+
+for (const sp of SPECIES) {
+  for (let i = 0; i < sp.count; i++) {
+    const { root, body, tail, pecs } = buildFish(sp);
+    scene.add(root);
+    const f = {
+      sp, root, body, tail, pecs,
+      pos: new THREE.Vector3(sr(BOUNDS.x0, BOUNDS.x1), sr(BOUNDS.y0, BOUNDS.y1), sr(BOUNDS.z0, BOUNDS.z1)),
+      vel: new THREE.Vector3(), tgt: new THREE.Vector3(), timer: 0,
+      speed: lerp(sp.speed[0], sp.speed[1], srand()),
+      yaw: 0, pitch: 0, phase: srand() * Math.PI * 2,
+    };
+    f.tgt.set(sr(BOUNDS.x0, BOUNDS.x1), sr(BOUNDS.y0, BOUNDS.y1), sr(BOUNDS.z0, BOUNDS.z1));
+    f.timer = sr(3, 7);
+    f.root.position.copy(f.pos);
+    FISH.push(f);
+  }
+}
+
+pickables.push(...fishMeshes);                // 물고기 메쉬도 클릭 대상에 포함
+
+const _d = new THREE.Vector3(), _push = new THREE.Vector3();
+function updateFish(f, dt, t) {
+  f.timer -= dt;
+  if (f.pos.distanceTo(f.tgt) < 0.35 || f.timer <= 0) {
+    f.tgt.set(sr(BOUNDS.x0, BOUNDS.x1), sr(BOUNDS.y0, BOUNDS.y1), sr(BOUNDS.z0, BOUNDS.z1));
+    f.timer = sr(3, 7);
+  }
+  _d.copy(f.tgt).sub(f.pos).normalize().multiplyScalar(f.speed);
+  _push.set(0, 0, 0);
+  for (const o of obstacles) {                       // 바위/유목 회피
+    const dx = f.pos.x - o.x, dy = f.pos.y - o.y, dz = f.pos.z - o.z;
+    const dist = Math.hypot(dx, dy * 1.4, dz);
+    const R = o.r + 0.45;
+    if (dist < R && dist > 1e-4) {
+      const k = ((R - dist) / R) * 3;
+      _push.x += (dx / dist) * k; _push.y += (dy / dist) * k; _push.z += (dz / dist) * k;
+    }
+  }
+  if (f.pos.x < BOUNDS.x0 + 0.3) _push.x += 1;
+  if (f.pos.x > BOUNDS.x1 - 0.3) _push.x -= 1;
+  if (f.pos.y < BOUNDS.y0 + 0.2) _push.y += 0.8;
+  if (f.pos.y > BOUNDS.y1 - 0.2) _push.y -= 0.8;
+  if (f.pos.z < BOUNDS.z0 + 0.2) _push.z += 0.8;
+  if (f.pos.z > BOUNDS.z1 - 0.2) _push.z -= 0.8;
+  _d.add(_push);
+  f.vel.lerp(_d, 1 - Math.exp(-dt * 1.6));
+  const sp = f.vel.length();
+  if (sp > f.speed * 1.6) f.vel.multiplyScalar((f.speed * 1.6) / sp);
+  f.pos.addScaledVector(f.vel, dt);
+  f.pos.x = clamp(f.pos.x, BOUNDS.x0, BOUNDS.x1);
+  f.pos.y = clamp(f.pos.y, BOUNDS.y0 - 0.1, BOUNDS.y1);
+  f.pos.z = clamp(f.pos.z, BOUNDS.z0, BOUNDS.z1);
+
+  const hz = Math.hypot(f.vel.x, f.vel.z);
+  const yawT = Math.atan2(-f.vel.z, f.vel.x);
+  f.yaw = angleLerp(f.yaw, yawT, 1 - Math.exp(-dt * 3));
+  const pitchT = clamp(Math.atan2(f.vel.y, hz + 1e-4), -0.5, 0.5);
+  f.pitch = lerp(f.pitch, pitchT, 1 - Math.exp(-dt * 3));
+  f.root.position.copy(f.pos);
+  f.root.rotation.set(0, f.yaw, f.pitch);
+
+  const ph = t * (4 + f.speed * 5) + f.phase;   // 헤엄 주기
+  f.body.rotation.y = Math.sin(ph) * 0.1;      // 몸 좌우 출렁임
+  f.tail.rotation.y = Math.sin(ph - 0.8) * 0.5; // 꼬리 흔들림
+  for (let i = 0; i < f.pecs.length; i++) {
+    f.pecs[i].scale.y = 1 + 0.18 * Math.sin(ph * 1.5 + i * Math.PI);
+  }
+}
+
+/* ================= 조명 ================= */
+const hemi = new THREE.HemisphereLight(0xdffaff, 0x0b2a2c, 0.7);
+scene.add(hemi);
+const spot = new THREE.SpotLight(0xffffff, 90, 0, 0.9, 0.6, 2);
+spot.position.set(0.5, 9, 2.5);
+spot.target.position.set(0, 1.5, 0);
+spot.castShadow = true;
+spot.shadow.mapSize.set(2048, 2048);
+spot.shadow.camera.near = 2;
+spot.shadow.camera.far = 25;
+spot.shadow.bias = -0.0006;
+scene.add(spot);
+scene.add(spot.target);
+const fill = new THREE.PointLight(0x9ff5ea, 25, 0, 2);
+fill.position.set(-4.5, 4, 3);
+scene.add(fill);
+
+const PRESETS = {
+  day:    { br: 1.0,  spot: 1.0,  temp: 6500, tint: 0.35 },
+  sunset: { br: 0.75, spot: 1.25, temp: 3000, tint: 0.7 },
+  night:  { br: 0.35, spot: 0.7,  temp: 8500, tint: 0.1 },
+  dream:  { br: 0.9,  spot: 1.7,  temp: 9000, tint: 0.95 },
+};
+const state = { ...PRESETS.day, preset: 'day' };
+const $br = $('#br'), $spot = $('#spot'), $temp = $('#temp'), $tint = $('#tint');
+
+function applyLights() {
+  const k = kelvin(state.temp);
+  spot.color.copy(k);
+  spot.intensity = 90 * state.spot;
+  hemi.intensity = 0.7 * state.br;
+  hemi.color.copy(k).lerp(new THREE.Color('#dffaff'), 0.5);
+  fill.intensity = 25 * state.br;
+  const water = WATER_DEEP.clone().lerp(WATER_AQUA, state.tint);
+  const dimmed = 0.3 + 0.7 * state.br;
+  scene.background.copy(water).multiplyScalar(dimmed * 0.6);
+  scene.fog.color.copy(water).multiplyScalar(dimmed * 0.6);
+  wallMat.color.copy(water).multiplyScalar(0.3 + 0.55 * state.br);
+}
+function syncUI() {
+  $br.value = state.br; $spot.value = state.spot; $temp.value = state.temp; $tint.value = state.tint;
+  $('#o-br').textContent = Math.round(state.br * 100) + '%';
+  $('#o-spot').textContent = Math.round(state.spot * 100) + '%';
+  $('#o-temp').textContent = state.temp + 'K';
+  $('#o-tint').textContent = Math.round(state.tint * 100) + '%';
+  for (const b of document.querySelectorAll('[data-preset]')) {
+    b.setAttribute('aria-pressed', String(b.dataset.preset === state.preset));
+  }
+}
+for (const b of document.querySelectorAll('[data-preset]')) {
+  b.addEventListener('click', () => {
+    Object.assign(state, PRESETS[b.dataset.preset], { preset: b.dataset.preset });
+    syncUI(); applyLights();
+  });
+}
+for (const [el, key] of [[$br, 'br'], [$spot, 'spot'], [$temp, 'temp'], [$tint, 'tint']]) {
+  el.addEventListener('input', () => {
+    state[key] = parseFloat(el.value);
+    state.preset = 'custom';
+    syncUI(); applyLights();
+  });
+}
+const panel = $('#panel'), toggle = $('#toggle');
+toggle.addEventListener('click', () => {
+  const open = !panel.classList.contains('open');
+  panel.classList.toggle('open', open);
+  toggle.setAttribute('aria-expanded', String(open));
+});
+
+/* ================= 명언 ================= */
+const QUOTES = {
+  fish: [
+    { t: '많은 사람들이 평생을 낚시를 하면서도, 그들이 추구하는 것이 물고기가 아니라는 것을 깨닫지 못한다.', a: '헨리 데이비드 소로우, 『월든』' },
+    { t: '그대는 물고기가 아닌데 어찌 물고기의 즐거움을 아는가?', a: '장자, 「추수」' },
+  ],
+  rock: [
+    { t: '대리석 덩어리 안에는 이미 조각상이 들어 있고, 조각가의 일은 그것을 발견하는 것이다.', a: '미켈란젤로 (전해지는 말)' },
+    { t: '산을 옮기는 사람은 작은 돌을 나르는 일부터 시작한다.', a: '공자 (전해지는 말)' },
+  ],
+  wood: [
+    { t: '사람은 자신이 내버려 둘 수 있는 것이 많을수록 부유하다.', a: '헨리 데이비드 소로우, 『월든』 (의역)' },
+    { t: '사람들은 쓸모 있음의 쓸모만 알고, 쓸모없음의 쓸모는 알지 못한다.', a: '장자, 「인간세」 (의역)' },
+  ],
+  plant: [
+    { t: '자연은 언제나 정신의 색을 띤다.', a: '랄프 왈도 에머슨, 『자연』 (의역)' },
+    { t: '자연은 서두르지 않는다. 그럼에도 모든 것이 이루어진다.', a: '노자 (전해지는 말)' },
+  ],
+  moss: [
+    { t: '야생에 세계의 보존이 있다.', a: '헨리 데이비드 소로우, 「걷기」 (의역)' },
+    { t: '모든 자연의 사실은 어떤 정신적 사실의 상징이다.', a: '랄프 왈도 에머슨, 『자연』 (의역)' },
+  ],
+  bubble: [
+    { t: '같은 강물에 두 번 발을 담글 수 없다.', a: '헤라클레이토스 (전해지는 말)' },
+    { t: '물은 가장 부드럽지만, 단단한 것을 이긴다.', a: '노자, 『도덕경』 78장 (의역)' },
+  ],
+};
+const LABEL = { fish: '물고기', rock: '바위', wood: '유목', plant: '수초', moss: '이끼 카펫', bubble: '공기 기포' };
+const qIdx = {};
+let lastKey = null, lastExtra = '';
+const $quote = $('#quote');
+function showQuote(key, extra = '') {
+  const list = QUOTES[key];
+  qIdx[key] = ((qIdx[key] ?? -1) + 1) % list.length;
+  const q = list[qIdx[key]];
+  lastKey = key; lastExtra = extra;
+  $('#q-tag').textContent = LABEL[key] + (extra ? ' · ' + extra : '');
+  $('#q-text').textContent = '“' + q.t + '”';
+  $('#q-author').textContent = '— ' + q.a;
+  $quote.hidden = false;
+  $quote.classList.add('open');
+}
+function hideQuote() {
+  $quote.classList.remove('open');
+  $quote.hidden = true;
+}
+$('#q-next').addEventListener('click', () => { if (lastKey) showQuote(lastKey, lastExtra); });
+$('#q-close').addEventListener('click', hideQuote);
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideQuote(); });
+
+/* ================= 입력: 드래그 회전 / 클릭 피킹 ================= */
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+function pick(cx, cy) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  const hit = raycaster.intersectObjects(pickables, false)[0];
+  return hit ? hit.object : null;
+}
+let down = null;
+canvas.addEventListener('pointerdown', (e) => {
+  down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, moved: false };
+  canvas.setPointerCapture(e.pointerId);
+  canvas.classList.add('drag');
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (down) {
+    const dx = e.clientX - down.lx, dy = e.clientY - down.ly;
+    down.lx = e.clientX; down.ly = e.clientY;
+    if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) down.moved = true;
+    if (down.moved) {
+      camYaw = clamp(camYaw - dx * 0.004, -0.6, 0.6);
+      camPitch = clamp(camPitch + dy * 0.01, -1.0, 1.0);
+    }
+  } else {
+    canvas.classList.toggle('hover', !!pick(e.clientX, e.clientY));
+  }
+});
+const endDrag = (e) => {
+  canvas.classList.remove('drag');
+  if (down && !down.moved && e.type === 'pointerup') {
+    const o = pick(e.clientX, e.clientY);
+    if (o) {
+      showQuote(o.userData.quoteKey, o.userData.species || '');
+    } else {
+      hideQuote();
+    }
+  }
+  down = null;
+};
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', endDrag);
+
+/* ================= 카메라 / 리사이즈 / 루프 ================= */
+function updateCamera() {
+  const aspect = window.innerWidth / window.innerHeight;
+  const halfTan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const dist = Math.max(10.5, 4.9 / (halfTan * aspect));   // 가로 폭 8 + 여백이 보이도록 거리 결정
+  camera.position.set(
+    camTarget.x + Math.sin(camYaw) * dist,
+    camTarget.y + camPitch,
+    camTarget.z + Math.cos(camYaw) * dist
+  );
+  camera.lookAt(camTarget);
+}
+function onResize() {
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', onResize);
+
+applyLights();
+syncUI();
+onResize();
+
+const clock = new THREE.Clock();
+function loop() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+  TIME.value = t;
+  for (const f of FISH) updateFish(f, dt, t);
+  updateBubbles(dt, t);
+  updateCamera();
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// 검증용 상태 노출 (표시 로직에 영향 없음)
+const kinds = new Set(FISH.map((f) => f.sp.name));
+const quoteCount = Object.values(QUOTES).reduce((n, a) => n + a.length, 0);
+document.body.dataset.fishCount = String(FISH.length);
+document.body.dataset.speciesCount = String(kinds.size);
+document.body.dataset.quoteCount = String(quoteCount);
+window.__aqua = { fish: FISH.length, species: kinds.size, quotes: quoteCount, bubbles: BUB_N, state };
+</script>
+</body>
+</html>
